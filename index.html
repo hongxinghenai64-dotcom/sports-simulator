@@ -9,11 +9,13 @@
         body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f0f4f8; margin: 0; padding: 20px; color: #333; }
         h1 { font-size: 24px; margin-bottom: 10px; color: #1e3a8a; }
         .container { display: flex; flex-wrap: wrap; gap: 20px; }
-        .control-panel { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); flex: 1; min-width: 300px; }
-        .control-group { margin-bottom: 15px; }
-        label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
-        .slider-val { display: inline-block; font-weight: bold; color: #2563eb; width: 50px; text-align: right; }
-        input[type=range] { width: calc(100% - 60px); vertical-align: middle; }
+        .control-panel { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); flex: 1; min-width: 320px; }
+        .control-group { margin-bottom: 15px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .control-label-area { flex: 1; min-width: 200px; display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: bold; }
+        .slider-container { display: flex; align-items: center; gap: 8px; width: 100%; margin-top: 4px; }
+        input[type=range] { flex: 1; }
+        .val-box { width: 50px; text-align: center; border: 1px solid #ccc; border-radius: 4px; padding: 2px 4px; font-weight: bold; background: #f8fafc; }
+        
         .btn-group { display: flex; gap: 10px; margin-top: 20px; }
         button { padding: 10px 20px; font-size: 14px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; transition: 0.2s; }
         .btn-shoot { background-color: #2563eb; color: white; flex: 2; }
@@ -32,6 +34,7 @@
         th { background-color: #f8fafc; font-weight: bold; position: sticky; top: 0; background: #f1f5f9; }
         
         .desc-box { background: #eff6ff; border-left: 4px solid #2563eb; padding: 10px 15px; border-radius: 4px; font-size: 13px; margin-bottom: 15px; }
+        .disabled-input { opacity: 0.4; pointer-events: none; }
     </style>
 </head>
 <body>
@@ -40,31 +43,60 @@
     
     <div class="desc-box">
         <strong>【概要】</strong><br>
-        各パラメータ（投球力・気温・スイープ回数・ガイド幅）を設定してストーンを滑らせましょう。<br>
-        データは下の表に自動追加され、<strong>CSV出力機能</strong>を使って重回帰分析（ExcelやPython）の教材データとしてダウンロードできます。
+        チェックボックスを入れた変数が実験（重回帰モデル）に反映されます。<br>
+        チェックを外すと項目は「-」としてデータ記録されます。
     </div>
 
     <div class="container">
         <!-- 操作パネル -->
         <div class="control-panel">
+            
+            <!-- ① 投球力 -->
             <div class="control-group">
-                <label>① 投球力 (デリバリー): <span id="val-force" class="slider-val">120</span></label>
-                <input type="range" id="param-force" min="80" max="160" value="120" oninput="updateVal('force')">
+                <div class="control-label-area">
+                    <input type="checkbox" id="chk-force" checked onchange="toggleParam('force')">
+                    <label for="chk-force">投球力 (デリバリー)</label>
+                </div>
+                <div class="slider-container" id="box-force">
+                    <input type="range" id="param-force" min="80" max="160" value="120" oninput="updateVal('force')">
+                    <span id="val-force" class="val-box">120</span>
+                </div>
             </div>
 
+            <!-- ② 気温 -->
             <div class="control-group">
-                <label>② 気温 (°C) [氷面抵抗]: <span id="val-temp" class="slider-val">2.0</span></label>
-                <input type="range" id="param-temp" min="-5" max="10" step="0.5" value="2.0" oninput="updateVal('temp')">
+                <div class="control-label-area">
+                    <input type="checkbox" id="chk-temp" onchange="toggleParam('temp')">
+                    <label for="chk-temp">気温 (°C)</label>
+                </div>
+                <div class="slider-container disabled-input" id="box-temp">
+                    <input type="range" id="param-temp" min="-5" max="10" step="0.5" value="2.0" oninput="updateVal('temp')">
+                    <span id="val-temp" class="val-box">2.0</span>
+                </div>
             </div>
 
+            <!-- ③ スイープ回数 -->
             <div class="control-group">
-                <label>③ スイープ回数 (ブラシ): <span id="val-sweep" class="slider-val">10</span></label>
-                <input type="range" id="param-sweep" min="0" max="30" value="10" oninput="updateVal('sweep')">
+                <div class="control-label-area">
+                    <input type="checkbox" id="chk-sweep" onchange="toggleParam('sweep')">
+                    <label for="chk-sweep">スイープ回数</label>
+                </div>
+                <div class="slider-container disabled-input" id="box-sweep">
+                    <input type="range" id="param-sweep" min="0" max="30" value="10" oninput="updateVal('sweep')">
+                    <span id="val-sweep" class="val-box">10</span>
+                </div>
             </div>
 
+            <!-- ④ ガイド幅 -->
             <div class="control-group">
-                <label>④ ガイド幅 (ブレの制限): <span id="val-guide" class="slider-val">30</span></label>
-                <input type="range" id="param-guide" min="10" max="50" value="30" oninput="updateVal('guide')">
+                <div class="control-label-area">
+                    <input type="checkbox" id="chk-guide" checked onchange="toggleParam('guide')">
+                    <label for="chk-guide">ガイド幅 (ブレ制限)</label>
+                </div>
+                <div class="slider-container" id="box-guide">
+                    <input type="range" id="param-guide" min="10" max="50" value="30" oninput="updateVal('guide')">
+                    <span id="val-guide" class="val-box">30</span>
+                </div>
             </div>
 
             <div class="btn-group">
@@ -111,6 +143,16 @@
             document.getElementById(`val-${param}`).innerText = document.getElementById(`param-${param}`).value;
         }
 
+        function toggleParam(param) {
+            const chk = document.getElementById(`chk-${param}`);
+            const box = document.getElementById(`box-${param}`);
+            if (chk.checked) {
+                box.classList.remove('disabled-input');
+            } else {
+                box.classList.add('disabled-input');
+            }
+        }
+
         function drawRink() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
@@ -118,7 +160,7 @@
             ctx.fillStyle = '#e0f2fe';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 距離目盛り (メートル表記: 0m ～ 40m)
+            // 距離目盛り
             ctx.strokeStyle = '#94a3b8';
             ctx.fillStyle = '#64748b';
             ctx.font = '11px sans-serif';
@@ -131,34 +173,38 @@
                 ctx.fillText(`${meters}m`, x + 2, 15);
             }
 
-            // ハウス（目標エリア）描画
-            const houseX = 50 + (30 / 4) * 70;
+            // ハウス（目標円）の描画（真円＆サイズアップ修正）
+            const houseX = 50 + (30 / 4) * 70; // 30m付近
             const houseY = canvas.height / 2;
             
+            // 赤円 (外) - 半径を大きめに設定 (65px)
             ctx.beginPath();
-            ctx.arc(houseX, houseY, 45, 0, Math.PI * 2);
+            ctx.arc(houseX, houseY, 65, 0, Math.PI * 2);
             ctx.fillStyle = '#ef4444';
             ctx.fill();
 
+            // 白円 (中)
             ctx.beginPath();
-            ctx.arc(houseX, houseY, 30, 0, Math.PI * 2);
+            ctx.arc(houseX, houseY, 45, 0, Math.PI * 2);
             ctx.fillStyle = '#ffffff';
             ctx.fill();
 
+            // 青円 (内)
             ctx.beginPath();
-            ctx.arc(houseX, houseY, 15, 0, Math.PI * 2);
+            ctx.arc(houseX, houseY, 22, 0, Math.PI * 2);
             ctx.fillStyle = '#2563eb';
             ctx.fill();
 
+            // 中心点
             ctx.beginPath();
-            ctx.arc(houseX, houseY, 4, 0, Math.PI * 2);
+            ctx.arc(houseX, houseY, 6, 0, Math.PI * 2);
             ctx.fillStyle = '#ffffff';
             ctx.fill();
 
-            // 停止位置のストーン描画
+            // 投球済みストーン描画
             stoneHits.forEach(stone => {
                 ctx.beginPath();
-                ctx.arc(stone.x, stone.y, 8, 0, Math.PI * 2);
+                ctx.arc(stone.x, stone.y, 7, 0, Math.PI * 2);
                 ctx.fillStyle = '#f59e0b';
                 ctx.strokeStyle = '#78350f';
                 ctx.lineWidth = 2;
@@ -168,14 +214,18 @@
         }
 
         function shootStone() {
-            const force = parseFloat(document.getElementById('param-force').value);
-            const temp = parseFloat(document.getElementById('param-temp').value);
-            const sweep = parseInt(document.getElementById('param-sweep').value);
-            const guide = parseFloat(document.getElementById('param-guide').value);
+            const isForce = document.getElementById('chk-force').checked;
+            const isTemp = document.getElementById('chk-temp').checked;
+            const isSweep = document.getElementById('chk-sweep').checked;
+            const isGuide = document.getElementById('chk-guide').checked;
 
-            // 【重回帰の理論モデル式】
-            // 距離 = 投球力 * 0.22 + スイープ * 0.18 - 気温 * 0.35 + 誤差
-            const noiseFactor = (50 - guide) * 0.05 + 0.5;
+            const force = isForce ? parseFloat(document.getElementById('param-force').value) : 120; // 未指定時は標準値120
+            const temp = isTemp ? parseFloat(document.getElementById('param-temp').value) : 0;     // 未指定時は0
+            const sweep = isSweep ? parseInt(document.getElementById('param-sweep').value) : 0;     // 未指定時は0
+            const guide = isGuide ? parseFloat(document.getElementById('param-guide').value) : 30; // 未指定時は30
+
+            // 距離計算（ONになっている変数のみ計算効果が発生）
+            const noiseFactor = isGuide ? ((50 - guide) * 0.05 + 0.5) : 1.0;
             const randomNoise = (Math.random() - 0.5) * noiseFactor * 4; 
             
             let distance = (force * 0.22) + (sweep * 0.18) - (temp * 0.35) + randomNoise;
@@ -185,17 +235,18 @@
 
             const startX = 50;
             const endX = Math.min(startX + (distance / 4) * 70, canvas.width - 15);
-            const ySpread = (Math.random() - 0.5) * (guide * 0.8);
+            const ySpread = isGuide ? (Math.random() - 0.5) * (guide * 0.8) : (Math.random() - 0.5) * 10;
             const endY = (canvas.height / 2) + ySpread;
 
             stoneHits.push({ x: endX, y: endY });
 
+            // 履歴に保持（チェックOFFの項目は "-" とする）
             const record = {
                 trial: trialCount,
-                force: force,
-                temp: temp,
-                sweep: sweep,
-                guide: guide,
+                force: isForce ? force : '-',
+                temp: isTemp ? temp : '-',
+                sweep: isSweep ? sweep : '-',
+                guide: isGuide ? guide : '-',
                 distance: distance.toFixed(2)
             };
             historyData.push(record);
@@ -245,6 +296,11 @@
             document.body.removeChild(link);
         }
 
+        // 初期化実行
+        toggleParam('force');
+        toggleParam('temp');
+        toggleParam('sweep');
+        toggleParam('guide');
         drawRink();
     </script>
 </body>
