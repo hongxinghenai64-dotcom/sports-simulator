@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>カーリングシミュレーター</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f0f4f8; margin: 0; padding: 20px; color: #333; }
+        h1 { font-size: 24px; margin-bottom: 10px; color: #1e3a8a; }
+        .container { display: flex; flex-wrap: wrap; gap: 20px; }
+        .control-panel { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); flex: 1; min-width: 300px; }
+        .control-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
+        .slider-val { display: inline-block; font-weight: bold; color: #2563eb; width: 50px; text-align: right; }
+        input[type=range] { width: calc(100% - 60px); vertical-align: middle; }
+        .btn-group { display: flex; gap: 10px; margin-top: 20px; }
+        button { padding: 10px 20px; font-size: 14px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; transition: 0.2s; }
+        .btn-shoot { background-color: #2563eb; color: white; flex: 2; }
+        .btn-shoot:hover { background-color: #1d4ed8; }
+        .btn-reset { background-color: #64748b; color: white; flex: 1; }
+        .btn-reset:hover { background-color: #475569; }
+        .btn-csv { background-color: #059669; color: white; flex: 1; }
+        .btn-csv:hover { background-color: #047857; }
+        
+        .simulation-area { flex: 2; min-width: 450px; display: flex; flex-direction: column; gap: 20px; }
+        canvas { background-color: #e0f2fe; border: 2px solid #0284c7; border-radius: 8px; width: 100%; height: 260px; display: block; }
+        
+        .table-container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); max-height: 250px; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: center; }
+        th, td { padding: 8px; border-bottom: 1px solid #e2e8f0; }
+        th { background-color: #f8fafc; font-weight: bold; position: sticky; top: 0; background: #f1f5f9; }
+        
+        .desc-box { background: #eff6ff; border-left: 4px solid #2563eb; padding: 10px 15px; border-radius: 4px; font-size: 13px; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+
+    <h1>🥌 カーリングシミュレーター</h1>
+    
+    <div class="desc-box">
+        <strong>【概要】</strong><br>
+        各パラメータ（投球力・気温・スイープ回数・ガイド幅）を設定してストーンを滑らせましょう。<br>
+        データは下の表に自動追加され、<strong>CSV出力機能</strong>を使って重回帰分析（ExcelやPython）の教材データとしてダウンロードできます。
+    </div>
+
+    <div class="container">
+        <!-- 操作パネル -->
+        <div class="control-panel">
+            <div class="control-group">
+                <label>① 投球力 (デリバリー): <span id="val-force" class="slider-val">120</span></label>
+                <input type="range" id="param-force" min="80" max="160" value="120" oninput="updateVal('force')">
+            </div>
+
+            <div class="control-group">
+                <label>② 気温 (°C) [氷面抵抗]: <span id="val-temp" class="slider-val">2.0</span></label>
+                <input type="range" id="param-temp" min="-5" max="10" step="0.5" value="2.0" oninput="updateVal('temp')">
+            </div>
+
+            <div class="control-group">
+                <label>③ スイープ回数 (ブラシ): <span id="val-sweep" class="slider-val">10</span></label>
+                <input type="range" id="param-sweep" min="0" max="30" value="10" oninput="updateVal('sweep')">
+            </div>
+
+            <div class="control-group">
+                <label>④ ガイド幅 (ブレの制限): <span id="val-guide" class="slider-val">30</span></label>
+                <input type="range" id="param-guide" min="10" max="50" value="30" oninput="updateVal('guide')">
+            </div>
+
+            <div class="btn-group">
+                <button class="btn-shoot" onclick="shootStone()">投球 (ショット)</button>
+                <button class="btn-reset" onclick="resetData()">リセット</button>
+            </div>
+            <div class="btn-group">
+                <button class="btn-csv" onclick="downloadCSV()">CSV出力</button>
+            </div>
+        </div>
+
+        <!-- 画面・テーブルエリア -->
+        <div class="simulation-area">
+            <canvas id="canvas" width="800" height="260"></canvas>
+            
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>試行</th>
+                            <th>投球力</th>
+                            <th>気温(°C)</th>
+                            <th>スイープ回数</th>
+                            <th>ガイド幅</th>
+                            <th>飛んだ距離 (m)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="data-table">
+                        <!-- データ追記領域 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let trialCount = 0;
+        let historyData = [];
+        let stoneHits = [];
+
+        function updateVal(param) {
+            document.getElementById(`val-${param}`).innerText = document.getElementById(`param-${param}`).value;
+        }
+
+        function drawRink() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 氷盤背景
+            ctx.fillStyle = '#e0f2fe';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 距離目盛り (メートル表記: 0m ～ 40m)
+            ctx.strokeStyle = '#94a3b8';
+            ctx.fillStyle = '#64748b';
+            ctx.font = '11px sans-serif';
+            for (let x = 50; x <= 750; x += 70) {
+                const meters = Math.round((x - 50) / 70 * 4);
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+                ctx.fillText(`${meters}m`, x + 2, 15);
+            }
+
+            // ハウス（目標エリア）描画
+            const houseX = 50 + (30 / 4) * 70;
+            const houseY = canvas.height / 2;
+            
+            ctx.beginPath();
+            ctx.arc(houseX, houseY, 45, 0, Math.PI * 2);
+            ctx.fillStyle = '#ef4444';
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(houseX, houseY, 30, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(houseX, houseY, 15, 0, Math.PI * 2);
+            ctx.fillStyle = '#2563eb';
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(houseX, houseY, 4, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+
+            // 停止位置のストーン描画
+            stoneHits.forEach(stone => {
+                ctx.beginPath();
+                ctx.arc(stone.x, stone.y, 8, 0, Math.PI * 2);
+                ctx.fillStyle = '#f59e0b';
+                ctx.strokeStyle = '#78350f';
+                ctx.lineWidth = 2;
+                ctx.fill();
+                ctx.stroke();
+            });
+        }
+
+        function shootStone() {
+            const force = parseFloat(document.getElementById('param-force').value);
+            const temp = parseFloat(document.getElementById('param-temp').value);
+            const sweep = parseInt(document.getElementById('param-sweep').value);
+            const guide = parseFloat(document.getElementById('param-guide').value);
+
+            // 【重回帰の理論モデル式】
+            // 距離 = 投球力 * 0.22 + スイープ * 0.18 - 気温 * 0.35 + 誤差
+            const noiseFactor = (50 - guide) * 0.05 + 0.5;
+            const randomNoise = (Math.random() - 0.5) * noiseFactor * 4; 
+            
+            let distance = (force * 0.22) + (sweep * 0.18) - (temp * 0.35) + randomNoise;
+            if (distance < 0) distance = 0;
+
+            trialCount++;
+
+            const startX = 50;
+            const endX = Math.min(startX + (distance / 4) * 70, canvas.width - 15);
+            const ySpread = (Math.random() - 0.5) * (guide * 0.8);
+            const endY = (canvas.height / 2) + ySpread;
+
+            stoneHits.push({ x: endX, y: endY });
+
+            const record = {
+                trial: trialCount,
+                force: force,
+                temp: temp,
+                sweep: sweep,
+                guide: guide,
+                distance: distance.toFixed(2)
+            };
+            historyData.push(record);
+
+            const tbody = document.getElementById('data-table');
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${record.trial}</td>
+                <td>${record.force}</td>
+                <td>${record.temp}</td>
+                <td>${record.sweep}</td>
+                <td>${record.guide}</td>
+                <td><strong>${record.distance}</strong></td>
+            `;
+            tbody.insertBefore(tr, tbody.firstChild);
+
+            drawRink();
+        }
+
+        function resetData() {
+            trialCount = 0;
+            historyData = [];
+            stoneHits = [];
+            document.getElementById('data-table').innerHTML = '';
+            drawRink();
+        }
+
+        function downloadCSV() {
+            if (historyData.length === 0) {
+                alert('データがありません。投球を行ってください。');
+                return;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+            csvContent += "試行回数,投球力,気温,スイープ回数,ガイド幅,飛んだ距離(m)\n";
+
+            historyData.forEach(row => {
+                csvContent += `${row.trial},${row.force},${row.temp},${row.sweep},${row.guide},${row.distance}\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "curling_simulation_data.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        drawRink();
+    </script>
+</body>
+</html>
