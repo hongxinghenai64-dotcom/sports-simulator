@@ -8,30 +8,27 @@
         * { box-sizing: border-box; }
         body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f0f4f8; margin: 0; padding: 20px; color: #333; }
         h1 { font-size: 24px; margin-bottom: 10px; color: #1e3a8a; }
-        .container { display: flex; flex-wrap: wrap; gap: 20px; }
-        .control-panel { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); flex: 1; min-width: 320px; }
-        .control-group { margin-bottom: 15px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-        .control-label-area { flex: 1; min-width: 200px; display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: bold; }
-        .slider-container { display: flex; align-items: center; gap: 8px; width: 100%; margin-top: 4px; }
-        input[type=range] { flex: 1; }
-        .val-box { width: 50px; text-align: center; border: 1px solid #ccc; border-radius: 4px; padding: 2px 4px; font-weight: bold; background: #f8fafc; }
         
-        .btn-group { display: flex; gap: 10px; margin-top: 20px; }
+        .top-controls { background: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 20px; align-items: center; }
+        .control-item { display: flex; align-items: center; gap: 10px; }
+        .control-item label { font-weight: bold; font-size: 14px; cursor: pointer; }
+        .val-box { width: 60px; text-align: center; border: 1px solid #ccc; border-radius: 4px; padding: 4px; font-weight: bold; background: #f8fafc; font-size: 14px; }
+        
+        .simulation-container { display: flex; flex-direction: column; gap: 15px; }
+        canvas { background-color: #a5b4fc; border: 2px solid #6366f1; border-radius: 8px; width: 100%; height: 260px; display: block; cursor: crosshair; }
+        
+        .bottom-area { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
+        .btn-group { display: flex; gap: 10px; }
         button { padding: 10px 20px; font-size: 14px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; transition: 0.2s; }
-        .btn-shoot { background-color: #2563eb; color: white; flex: 2; }
-        .btn-shoot:hover { background-color: #1d4ed8; }
-        .btn-reset { background-color: #64748b; color: white; flex: 1; }
+        .btn-csv { background-color: #6366f1; color: white; }
+        .btn-csv:hover { background-color: #4f46e5; }
+        .btn-reset { background-color: #64748b; color: white; }
         .btn-reset:hover { background-color: #475569; }
-        .btn-csv { background-color: #059669; color: white; flex: 1; }
-        .btn-csv:hover { background-color: #047857; }
         
-        .simulation-area { flex: 2; min-width: 450px; display: flex; flex-direction: column; gap: 20px; }
-        canvas { background-color: #e0f2fe; border: 2px solid #0284c7; border-radius: 8px; width: 100%; height: 260px; display: block; }
-        
-        .table-container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); max-height: 250px; overflow-y: auto; }
+        .table-container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 380px; max-height: 250px; overflow-y: auto; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: center; }
-        th, td { padding: 8px; border-bottom: 1px solid #e2e8f0; }
-        th { background-color: #f8fafc; font-weight: bold; position: sticky; top: 0; background: #f1f5f9; }
+        th, td { padding: 6px 8px; border: 1px solid #cbd5e1; }
+        th { background-color: #f1f5f9; font-weight: bold; position: sticky; top: 0; }
         
         .desc-box { background: #eff6ff; border-left: 4px solid #2563eb; padding: 10px 15px; border-radius: 4px; font-size: 13px; margin-bottom: 15px; }
         .disabled-input { opacity: 0.4; pointer-events: none; }
@@ -42,90 +39,58 @@
     <h1>🥌 カーリングシミュレーター</h1>
     
     <div class="desc-box">
-        <strong>【概要】</strong><br>
-        チェックボックスを入れた変数が実験（重回帰モデル）に反映されます。<br>
-        チェックを外すと項目は「-」としてデータ記録されます。
+        <strong>【遊び方】</strong><br>
+        左側の白い枠内にあるストーンを<strong>マウスで左に引っぱって離す</strong>と発射します！<br>
+        「作業標準」にチェックを入れると赤線（限界ライン）が表示され、それ以上引けなくなります。
     </div>
 
-    <div class="container">
-        <!-- 操作パネル -->
-        <div class="control-panel">
-            
-            <!-- ① 投球力 -->
-            <div class="control-group">
-                <div class="control-label-area">
-                    <input type="checkbox" id="chk-force" checked onchange="toggleParam('force')">
-                    <label for="chk-force">投球力 (デリバリー)</label>
-                </div>
-                <div class="slider-container" id="box-force">
-                    <input type="range" id="param-force" min="80" max="160" value="120" oninput="updateVal('force')">
-                    <span id="val-force" class="val-box">120</span>
-                </div>
-            </div>
-
-            <!-- ② 気温 -->
-            <div class="control-group">
-                <div class="control-label-area">
-                    <input type="checkbox" id="chk-temp" onchange="toggleParam('temp')">
-                    <label for="chk-temp">気温 (°C)</label>
-                </div>
-                <div class="slider-container disabled-input" id="box-temp">
-                    <input type="range" id="param-temp" min="-5" max="10" step="0.5" value="2.0" oninput="updateVal('temp')">
-                    <span id="val-temp" class="val-box">2.0</span>
-                </div>
-            </div>
-
-            <!-- ③ スイープ回数 -->
-            <div class="control-group">
-                <div class="control-label-area">
-                    <input type="checkbox" id="chk-sweep" onchange="toggleParam('sweep')">
-                    <label for="chk-sweep">スイープ回数</label>
-                </div>
-                <div class="slider-container disabled-input" id="box-sweep">
-                    <input type="range" id="param-sweep" min="0" max="30" value="10" oninput="updateVal('sweep')">
-                    <span id="val-sweep" class="val-box">10</span>
-                </div>
-            </div>
-
-            <!-- ④ ガイド幅 -->
-            <div class="control-group">
-                <div class="control-label-area">
-                    <input type="checkbox" id="chk-guide" checked onchange="toggleParam('guide')">
-                    <label for="chk-guide">ガイド幅 (ブレ制限)</label>
-                </div>
-                <div class="slider-container" id="box-guide">
-                    <input type="range" id="param-guide" min="10" max="50" value="30" oninput="updateVal('guide')">
-                    <span id="val-guide" class="val-box">30</span>
-                </div>
-            </div>
-
-            <div class="btn-group">
-                <button class="btn-shoot" onclick="shootStone()">投球 (ショット)</button>
-                <button class="btn-reset" onclick="resetData()">リセット</button>
-            </div>
-            <div class="btn-group">
-                <button class="btn-csv" onclick="downloadCSV()">CSV出力</button>
-            </div>
+    <!-- 上部設定パネル -->
+    <div class="top-controls">
+        <div class="control-item">
+            <input type="checkbox" id="chk-force" onchange="toggleParam('force')">
+            <label for="chk-force">作業標準 (投球力制限)</label>
+            <input type="range" id="param-force" min="80" max="160" value="120" oninput="updateVal('force')" class="disabled-input">
+            <span id="val-force" class="val-box disabled-input">120</span>
         </div>
 
-        <!-- 画面・テーブルエリア -->
-        <div class="simulation-area">
-            <canvas id="canvas" width="800" height="260"></canvas>
-            
+        <div class="control-item">
+            <input type="checkbox" id="chk-guide" checked onchange="toggleParam('guide')">
+            <label for="chk-guide">ガイド幅</label>
+            <input type="range" id="param-guide" min="10" max="50" value="35" oninput="updateVal('guide')">
+            <span id="val-guide" class="val-box">35</span>
+        </div>
+
+        <div class="control-item">
+            <input type="checkbox" id="chk-temp" onchange="toggleParam('temp')">
+            <label for="chk-temp">気温 (°C)</label>
+            <input type="range" id="param-temp" min="-5" max="10" step="0.5" value="2.0" oninput="updateVal('temp')" class="disabled-input">
+            <span id="val-temp" class="val-box disabled-input">2.0</span>
+        </div>
+    </div>
+
+    <div class="simulation-container">
+        <!-- キャンバス -->
+        <canvas id="canvas" width="1000" height="260"></canvas>
+        
+        <div class="bottom-area">
+            <div class="btn-group">
+                <button class="btn-csv" onclick="downloadCSV()">CSV出力</button>
+                <button class="btn-reset" onclick="resetData()">はじめから</button>
+            </div>
+
+            <!-- テーブル -->
             <div class="table-container">
                 <table>
                     <thead>
                         <tr>
                             <th>試行</th>
-                            <th>投球力</th>
-                            <th>気温(°C)</th>
-                            <th>スイープ回数</th>
+                            <th>作業標準</th>
                             <th>ガイド幅</th>
-                            <th>飛んだ距離 (m)</th>
+                            <th>飛んだ距離</th>
                         </tr>
                     </thead>
                     <tbody id="data-table">
-                        <!-- データ追記領域 -->
+                        <!-- データ追記 -->
                     </tbody>
                 </table>
             </div>
@@ -135,172 +100,299 @@
     <script>
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
+        
         let trialCount = 0;
         let historyData = [];
         let stoneHits = [];
 
+        // 発射台（ランチャー）の設定
+        const launcher = {
+            x: 20,
+            y: 50,
+            width: 130,
+            height: 160,
+            stoneRadius: 10,
+            restX: 130, // 初期位置 (右端)
+            restY: 130
+        };
+
+        let isDragging = false;
+        let dragX = launcher.restX;
+        let dragY = launcher.restY;
+        let isAnimating = false;
+
         function updateVal(param) {
             document.getElementById(`val-${param}`).innerText = document.getElementById(`param-${param}`).value;
+            drawRink();
         }
 
         function toggleParam(param) {
             const chk = document.getElementById(`chk-${param}`);
-            const box = document.getElementById(`box-${param}`);
+            const slider = document.getElementById(`param-${param}`);
+            const val = document.getElementById(`val-${param}`);
             if (chk.checked) {
-                box.classList.remove('disabled-input');
+                slider.classList.remove('disabled-input');
+                val.classList.remove('disabled-input');
             } else {
-                box.classList.add('disabled-input');
+                slider.classList.add('disabled-input');
+                val.classList.add('disabled-input');
             }
+            drawRink();
         }
+
+        // マウスイベントリスナー
+        canvas.addEventListener('mousedown', (e) => {
+            if (isAnimating) return;
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = (e.clientX - rect.left) * (canvas.width / rect.width);
+            const mouseY = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+            // ストーン付近をクリックしたか判定
+            const dist = Math.hypot(mouseX - launcher.restX, mouseY - launcher.restY);
+            if (dist < 25) {
+                isDragging = true;
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isDragging || isAnimating) return;
+            const rect = canvas.getBoundingClientRect();
+            let mouseX = (e.clientX - rect.left) * (canvas.width / rect.width);
+            let mouseY = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+            // 引っ張れる範囲の制限
+            let minX = launcher.x + 10;
+            const isForceLimit = document.getElementById('chk-force').checked;
+            
+            if (isForceLimit) {
+                const forceVal = parseFloat(document.getElementById('param-force').value);
+                // 80~160 の値を 発射台のX座標に変換
+                const limitX = launcher.restX - ((forceVal - 70) * 1.1);
+                minX = Math.max(minX, limitX);
+            }
+
+            dragX = Math.min(launcher.restX, Math.max(minX, mouseX));
+            
+            // 上下のブレ制限
+            const isGuide = document.getElementById('chk-guide').checked;
+            const guideVal = isGuide ? parseFloat(document.getElementById('param-guide').value) : 50;
+            const maxYSpread = (guideVal / 50) * 40; 
+            dragY = Math.min(launcher.restY + maxYSpread, Math.max(launcher.restY - maxYSpread, mouseY));
+
+            drawRink();
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                shootStone();
+            }
+        });
 
         function drawRink() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // 氷盤背景
-            ctx.fillStyle = '#e0f2fe';
+            // 背景（氷盤）
+            ctx.fillStyle = '#a5b4fc';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 距離目盛り
-            ctx.strokeStyle = '#94a3b8';
-            ctx.fillStyle = '#64748b';
+            // 目盛り線
+            ctx.strokeStyle = '#64748b';
+            ctx.fillStyle = '#1e293b';
             ctx.font = '11px sans-serif';
-            for (let x = 50; x <= 750; x += 70) {
-                const meters = Math.round((x - 50) / 70 * 4);
+            for (let x = 200; x <= 950; x += 80) {
                 ctx.beginPath();
                 ctx.moveTo(x, 0);
                 ctx.lineTo(x, canvas.height);
                 ctx.stroke();
-                ctx.fillText(`${meters}m`, x + 2, 15);
+                ctx.fillText(x, x - 10, 15);
             }
 
-            // ハウス（目標円）の描画（真円＆サイズアップ修正）
-            const houseX = 50 + (30 / 4) * 70; // 30m付近
-            const houseY = canvas.height / 2;
-            
-            // 赤円 (外) - 半径を大きめに設定 (65px)
-            ctx.beginPath();
-            ctx.arc(houseX, houseY, 65, 0, Math.PI * 2);
-            ctx.fillStyle = '#ef4444';
-            ctx.fill();
-
-            // 白円 (中)
-            ctx.beginPath();
-            ctx.arc(houseX, houseY, 45, 0, Math.PI * 2);
+            // --- 発射台（白い枠）---
             ctx.fillStyle = '#ffffff';
-            ctx.fill();
-
-            // 青円 (内)
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.arc(houseX, houseY, 22, 0, Math.PI * 2);
-            ctx.fillStyle = '#2563eb';
+            ctx.roundRect(launcher.x, launcher.y, launcher.width, launcher.height, 15);
             ctx.fill();
+            ctx.stroke();
 
-            // 中心点
-            ctx.beginPath();
-            ctx.arc(houseX, houseY, 6, 0, Math.PI * 2);
-            ctx.fillStyle = '#ffffff';
-            ctx.fill();
+            // ガイド線（ガイド幅ONのとき）
+            const isGuide = document.getElementById('chk-guide').checked;
+            if (isGuide) {
+                const guideVal = parseFloat(document.getElementById('param-guide').value);
+                const spread = (guideVal / 50) * 40;
+                ctx.strokeStyle = '#94a3b8';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(launcher.x + 10, launcher.restY - spread);
+                ctx.lineTo(launcher.restX, launcher.restY);
+                ctx.lineTo(launcher.x + 10, launcher.restY + spread);
+                ctx.stroke();
+            }
 
-            // 投球済みストーン描画
+            // 作業標準 赤いライン（作業標準ONのとき）
+            const isForceLimit = document.getElementById('chk-force').checked;
+            if (isForceLimit) {
+                const forceVal = parseFloat(document.getElementById('param-force').value);
+                const limitX = launcher.restX - ((forceVal - 70) * 1.1);
+                ctx.strokeStyle = '#ef4444';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(limitX, launcher.y + 5);
+                ctx.lineTo(limitX, launcher.y + launcher.height - 5);
+                ctx.stroke();
+            }
+
+            // 発射台内の待機ストーン or 引っ張りストーン
+            if (!isAnimating) {
+                // ゴムひも（引っ張っている感覚を表現）
+                if (isDragging) {
+                    ctx.strokeStyle = '#f59e0b';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(launcher.restX, launcher.restY);
+                    ctx.lineTo(dragX, dragY);
+                    ctx.stroke();
+                }
+
+                // ストーン描画
+                ctx.beginPath();
+                ctx.arc(dragX, dragY, launcher.stoneRadius, 0, Math.PI * 2);
+                ctx.fillStyle = '#334155';
+                ctx.fill();
+                ctx.strokeStyle = '#0f172a';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // 引っ張りパワー数値を表示
+                if (isDragging) {
+                    const pullPower = Math.round((launcher.restX - dragX) * 1.3 + 70);
+                    ctx.fillStyle = '#1e293b';
+                    ctx.font = 'bold 12px sans-serif';
+                    ctx.fillText(`Power: ${pullPower}`, dragX - 20, dragY - 15);
+                }
+            }
+
+            // 履歴の点（過去に飛んだストーン）
             stoneHits.forEach(stone => {
                 ctx.beginPath();
-                ctx.arc(stone.x, stone.y, 7, 0, Math.PI * 2);
-                ctx.fillStyle = '#f59e0b';
-                ctx.strokeStyle = '#78350f';
-                ctx.lineWidth = 2;
+                ctx.arc(stone.x, stone.y, 8, 0, Math.PI * 2);
+                ctx.fillStyle = '#800000';
                 ctx.fill();
-                ctx.stroke();
             });
         }
 
+        // 投球アニメーション＆データ記録
         function shootStone() {
+            isAnimating = true;
+
             const isForce = document.getElementById('chk-force').checked;
-            const isTemp = document.getElementById('chk-temp').checked;
-            const isSweep = document.getElementById('chk-sweep').checked;
             const isGuide = document.getElementById('chk-guide').checked;
+            const isTemp = document.getElementById('chk-temp').checked;
 
-            const force = isForce ? parseFloat(document.getElementById('param-force').value) : 120; // 未指定時は標準値120
-            const temp = isTemp ? parseFloat(document.getElementById('param-temp').value) : 0;     // 未指定時は0
-            const sweep = isSweep ? parseInt(document.getElementById('param-sweep').value) : 0;     // 未指定時は0
-            const guide = isGuide ? parseFloat(document.getElementById('param-guide').value) : 30; // 未指定時は30
+            // 引っ張った距離からパワー（投球力）を算出
+            const pulledDist = launcher.restX - dragX;
+            const calculatedForce = Math.round(pulledDist * 1.3 + 70);
 
-            // 距離計算（ONになっている変数のみ計算効果が発生）
-            const noiseFactor = isGuide ? ((50 - guide) * 0.05 + 0.5) : 1.0;
-            const randomNoise = (Math.random() - 0.5) * noiseFactor * 4; 
-            
-            let distance = (force * 0.22) + (sweep * 0.18) - (temp * 0.35) + randomNoise;
-            if (distance < 0) distance = 0;
+            const temp = isTemp ? parseFloat(document.getElementById('param-temp').value) : 0;
+            const guide = isGuide ? parseFloat(document.getElementById('param-guide').value) : 35;
 
-            trialCount++;
+            // 飛距離の計算
+            const randomNoise = (Math.random() - 0.5) * (guide * 0.15);
+            let targetDistance = (calculatedForce * 8.5) - (temp * 5) + randomNoise + 200;
+            if (targetDistance < 200) targetDistance = 200;
 
-            const startX = 50;
-            const endX = Math.min(startX + (distance / 4) * 70, canvas.width - 15);
-            const ySpread = isGuide ? (Math.random() - 0.5) * (guide * 0.8) : (Math.random() - 0.5) * 10;
-            const endY = (canvas.height / 2) + ySpread;
+            const targetY = dragY + (Math.random() - 0.5) * (guide * 0.8);
 
-            stoneHits.push({ x: endX, y: endY });
+            // アニメーション変数
+            let currentX = launcher.restX;
+            let currentY = launcher.restY;
+            const speed = 15;
 
-            // 履歴に保持（チェックOFFの項目は "-" とする）
-            const record = {
-                trial: trialCount,
-                force: isForce ? force : '-',
-                temp: isTemp ? temp : '-',
-                sweep: isSweep ? sweep : '-',
-                guide: isGuide ? guide : '-',
-                distance: distance.toFixed(2)
-            };
-            historyData.push(record);
+            function animate() {
+                currentX += (targetDistance - currentX) * 0.1 + speed;
+                currentY += (targetY - currentY) * 0.05;
 
-            const tbody = document.getElementById('data-table');
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${record.trial}</td>
-                <td>${record.force}</td>
-                <td>${record.temp}</td>
-                <td>${record.sweep}</td>
-                <td>${record.guide}</td>
-                <td><strong>${record.distance}</strong></td>
-            `;
-            tbody.insertBefore(tr, tbody.firstChild);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                drawRink();
 
-            drawRink();
+                // アニメーション中のストーン
+                ctx.beginPath();
+                ctx.arc(currentX, currentY, launcher.stoneRadius, 0, Math.PI * 2);
+                ctx.fillStyle = '#800000';
+                ctx.fill();
+
+                if (currentX < targetDistance - 2) {
+                    requestAnimationFrame(animate);
+                } else {
+                    // アニメーション完了処理
+                    stoneHits.push({ x: targetDistance, y: targetY });
+                    trialCount++;
+
+                    const record = {
+                        trial: trialCount,
+                        force: isForce ? parseFloat(document.getElementById('param-force').value) : calculatedForce,
+                        guide: isGuide ? guide : '-',
+                        distance: targetDistance.toFixed(3)
+                    };
+                    historyData.push(record);
+
+                    // テーブル追加
+                    const tbody = document.getElementById('data-table');
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${record.trial}</td>
+                        <td>${record.force}</td>
+                        <td>${record.guide}</td>
+                        <td>${record.distance}</td>
+                    `;
+                    tbody.insertBefore(tr, tbody.firstChild);
+
+                    // 位置リセット
+                    dragX = launcher.restX;
+                    dragY = launcher.restY;
+                    isAnimating = false;
+                    drawRink();
+                }
+            }
+
+            animate();
         }
 
         function resetData() {
             trialCount = 0;
             historyData = [];
             stoneHits = [];
+            dragX = launcher.restX;
+            dragY = launcher.restY;
             document.getElementById('data-table').innerHTML = '';
             drawRink();
         }
 
         function downloadCSV() {
             if (historyData.length === 0) {
-                alert('データがありません。投球を行ってください。');
+                alert('データがありません。');
                 return;
             }
 
             let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-            csvContent += "試行回数,投球力,気温,スイープ回数,ガイド幅,飛んだ距離(m)\n";
+            csvContent += "試行,作業標準,ガイド幅,飛んだ距離\n";
 
             historyData.forEach(row => {
-                csvContent += `${row.trial},${row.force},${row.temp},${row.sweep},${row.guide},${row.distance}\n`;
+                csvContent += `${row.trial},${row.force},${row.guide},${row.distance}\n`;
             });
 
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
             link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "curling_simulation_data.csv");
+            link.setAttribute("download", "curling_data.csv");
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
         }
 
-        // 初期化実行
-        toggleParam('force');
-        toggleParam('temp');
-        toggleParam('sweep');
-        toggleParam('guide');
+        // 初期描画
         drawRink();
     </script>
 </body>
