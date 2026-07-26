@@ -25,7 +25,6 @@
         .btn-reset { background-color: #64748b; color: white; }
         .btn-reset:hover { background-color: #475569; }
         
-        /* 修正箇所: 2列増えたため幅を480pxに拡張 */
         .table-container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 480px; max-height: 250px; overflow-y: auto; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: center; }
         th, td { padding: 6px 8px; border: 1px solid #cbd5e1; }
@@ -57,7 +56,8 @@
         <div class="control-item">
             <input type="checkbox" id="chk-guide" checked onchange="toggleParam('guide')">
             <label for="chk-guide">ガイド幅</label>
-            <input type="range" id="param-guide" min="10" max="50" value="35" oninput="updateVal('guide')">
+            <!-- 修正: minを0にし、初期値を35から動かせるよう変更 -->
+            <input type="range" id="param-guide" min="0" max="50" value="35" oninput="updateVal('guide')">
             <span id="val-guide" class="val-box">35</span>
         </div>
 
@@ -85,7 +85,6 @@
                             <th>試行</th>
                             <th>作業標準</th>
                             <th>ガイド幅</th>
-                            <!-- 修正箇所: カラムを2つに分割 -->
                             <th>到達距離(横)</th>
                             <th>直線距離(斜め)</th>
                         </tr>
@@ -189,6 +188,7 @@
             
             const isGuide = document.getElementById('chk-guide').checked;
             const guideVal = isGuide ? parseFloat(document.getElementById('param-guide').value) : 50;
+            // ガイド幅0の時に全くブレないようスケール計算
             const maxYSpread = (guideVal / 50) * 60; 
             dragY = Math.min(launcher.restY + maxYSpread, Math.max(launcher.restY - maxYSpread, mousePos.y));
 
@@ -202,13 +202,11 @@
             }
         });
 
-        // 距離(m)から画面座標(px)を取得
         function getXFromDistance(m) {
             const pxPerMeter = (RINK_END_X - launcher.restX) / MAX_DISTANCE_M;
             return launcher.restX + (m * pxPerMeter);
         }
 
-        // 修正箇所: X軸（横方向）のみの到達距離(m)を計算する関数を追加
         function getDistanceFromX(x) {
             const startX = launcher.restX;
             const endX = RINK_END_X;
@@ -217,16 +215,18 @@
             return (x - startX) * (MAX_DISTANCE_M / pxWidth);
         }
 
-        // 発射位置からの斜めの直線距離(m)を計算
+        // 修正: 物理的・空間的なY軸差分の影響（スケール補正）を大きくし、斜め時に10m程度ずれるように変更
         function getActualDistance(x, y) {
             const startX = launcher.restX;
             const startY = launcher.restY;
             const pxPerMeter = (RINK_END_X - startX) / MAX_DISTANCE_M;
 
-            // XとYの移動量から実際の移動距離(px)を計算
-            const pixelDist = Math.hypot(x - startX, y - startY);
+            const dxPx = x - startX;
+            // Y方向の物理距離感を約2.2倍強調して斜め成分を感度高く反映
+            const dyPx = (y - startY) * 2.2; 
 
-            // メートルに変換
+            const pixelDist = Math.hypot(dxPx, dyPx);
+
             return pixelDist / pxPerMeter;
         }
 
@@ -338,10 +338,7 @@
             // 着地履歴
             stoneHits.forEach(stone => {
                 if (stone.x <= canvas.width && stone.y >= 0 && stone.y <= canvas.height) {
-                    // ハウス（目標円）の中心からの距離を計算
                     const distToHouse = Math.hypot(stone.x - houseX, stone.y - houseY);
-                    
-                    // 円の中なら赤（#ef4444）、外なら黒（#1e293b）
                     const isInsideHouse = distToHouse <= outerRadius;
                     
                     ctx.beginPath();
@@ -356,7 +353,6 @@
             });
         }
 
-        // 投球物理計算（適正減速版）
         function shootStone() {
             isAnimating = true;
 
@@ -369,7 +365,6 @@
 
             const isZeroPull = (dx === 0 && dy === 0);
             
-            // 初速と減速（摩擦）のバランスを修正
             let initialSpeed = dx * 0.04;
             if (isZeroPull) initialSpeed = 0;
 
@@ -381,7 +376,6 @@
             let vy = Math.sin(angle) * initialSpeed; 
 
             const temp = isTemp ? parseFloat(document.getElementById('param-temp').value) : 2.0;
-            // 摩擦を強めて確実に手前で減速・停止するように変更
             const frictionCoefficient = 0.035 - (temp * 0.0002); 
 
             let isOutOfBounds = false;
@@ -407,20 +401,17 @@
 
                 const currentSpeed = Math.hypot(vx, vy);
 
-                // 完全停止（スピードが一定以下）したらアニメーション終了
                 if (currentSpeed > 0.01 && posX < RINK_END_X && !isOutOfBounds) {
                     requestAnimationFrame(animate);
                 } else {
                     trialCount++;
 
-                    // 修正箇所: 2通りの距離（横方向・斜め直線）を算出
                     let distX = getDistanceFromX(posX);
                     let distDiag = getActualDistance(posX, posY);
 
                     let displayX = distX.toFixed(3);
                     let displayDiag = distDiag.toFixed(3);
 
-                    // 2300mオーバーまたは枠外飛び出しのみ「NA」
                     if (distDiag > MAX_DISTANCE_M || isOutOfBounds) {
                         displayX = 'NA';
                         displayDiag = 'NA';
@@ -439,7 +430,6 @@
                     };
                     historyData.push(record);
 
-                    // 修正箇所: テーブルへの出力内容を2列に変更
                     const tbody = document.getElementById('data-table');
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
@@ -477,7 +467,6 @@
                 return;
             }
 
-            // 修正箇所: ヘッダーと行出力に「到達距離(横)」と「直線距離(斜め)」を両方含める
             let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
             csvContent += "試行,作業標準,ガイド幅,到達距離(横),直線距離(斜め)\n";
 
