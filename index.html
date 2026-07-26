@@ -319,6 +319,7 @@
                 ctx.lineWidth = 2;
                 ctx.stroke();
             }
+
             // 着地履歴
             stoneHits.forEach(stone => {
                 if (stone.x <= canvas.width && stone.y >= 0 && stone.y <= canvas.height) {
@@ -333,12 +334,12 @@
                     ctx.fillStyle = isInsideHouse ? '#ef4444' : '#1e293b';
                     ctx.fill();
                     
-                    // 見やすさのために黒いフチ取りも追加
                     ctx.strokeStyle = '#0f172a';
                     ctx.lineWidth = 1.5;
                     ctx.stroke();
                 }
             });
+        }
 
         // 投球物理計算（適正減速版）
         function shootStone() {
