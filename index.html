@@ -41,7 +41,7 @@
     <div class="desc-box">
         <strong>【遊び方】</strong><br>
         発射台内のコインをマウスで手前に引っ張って放すと発射します！<br>
-        2300mを超えたりコースアウトした場合は「NA（測定不能）」になります。目標は1700mのハウス中心です。
+        2300mを超えたり枠外へ飛び出した場合は「NA（測定不能）」になります。目標は1700mのハウス中心です。
     </div>
 
     <!-- 上部設定パネル -->
@@ -113,18 +113,15 @@
             restY: 130
         };
 
-        // スケール定義（100m〜2300m）
+        // スケール定義（0m〜2300m）
         const MAX_DISTANCE_M = 2300;
-        const RINK_START_X = 180;
-        const RINK_END_X = 1180;
-        const RINK_WIDTH_PX = RINK_END_X - RINK_START_X; // 1000px
+        const RINK_END_X = 1180; // 2300mの位置
 
         let isDragging = false;
         let dragX = launcher.restX;
         let dragY = launcher.restY;
         let isAnimating = false;
 
-        // 引っ張り量からPowerを定義（最大引っぱり100pxでPower160）
         function calcPowerFromDx(dx) {
             return Math.round(dx * 1.6);
         }
@@ -202,12 +199,20 @@
             }
         });
 
+        // 距離(m)から画面座標(px)を取得
         function getXFromDistance(m) {
-            return RINK_START_X + (m - 100) * (RINK_WIDTH_PX / (MAX_DISTANCE_M - 100));
+            const pxPerMeter = (RINK_END_X - launcher.restX) / MAX_DISTANCE_M;
+            return launcher.restX + (m * pxPerMeter);
         }
 
+        // 画面座標(px)から距離(m)を計算
         function getDistanceFromX(x) {
-            return 100 + (x - RINK_START_X) * ((MAX_DISTANCE_M - 100) / RINK_WIDTH_PX);
+            const startX = launcher.restX;
+            const endX = RINK_END_X;
+            const pxWidth = endX - startX;
+            
+            if (x < startX) return 0;
+            return (x - startX) * (MAX_DISTANCE_M / pxWidth);
         }
 
         function drawRink() {
@@ -236,7 +241,8 @@
             // ハウス（目標円）：1700m
             const houseX = getXFromDistance(1700);
             const houseY = canvas.height / 2;
-            const outerRadius = (100 * (RINK_WIDTH_PX / (MAX_DISTANCE_M - 100))); 
+            const pxPer100m = (RINK_END_X - launcher.restX) / (MAX_DISTANCE_M / 100);
+            const outerRadius = pxPer100m; 
 
             ctx.beginPath();
             ctx.arc(houseX, houseY, outerRadius, 0, Math.PI * 2);
@@ -325,7 +331,7 @@
             });
         }
 
-        // 投球物理計算（120で2200m前後へ着地する絶対調整）
+        // 投球物理計算（適正減速版）
         function shootStone() {
             isAnimating = true;
 
@@ -338,9 +344,8 @@
 
             const isZeroPull = (dx === 0 && dy === 0);
             
-            // 初速と減速の完全バランス調整
-            // dx = 75px (Power 120) の時、距離が約 2200m になる計算式
-            let initialSpeed = Math.hypot(dx, dy) * 0.082; 
+            // 初速と減速（摩擦）のバランスを修正
+            let initialSpeed = Math.hypot(dx, dy) * 0.08; 
             if (isZeroPull) initialSpeed = 0;
 
             const angle = Math.atan2(-dy, dx); 
@@ -351,19 +356,19 @@
             let vy = Math.sin(angle) * initialSpeed; 
 
             const temp = isTemp ? parseFloat(document.getElementById('param-temp').value) : 2.0;
-            const frictionCoefficient = 0.0075 - (temp * 0.0001); 
+            // 摩擦を強めて確実に手前で減速・停止するように変更
+            const frictionCoefficient = 0.035 - (temp * 0.0002); 
 
             let isOutOfBounds = false;
 
             function animate() {
-                posX += vx * 3.0; 
-                posY += vy * 3.0;
+                posX += vx * 10; 
+                posY += vy * 10;
 
                 vx *= (1 - frictionCoefficient);
                 vy *= (1 - frictionCoefficient);
 
-                // コースアウト判定（上下端から少しはみ出した場合のみ）
-                if (posY < -10 || posY > canvas.height + 10) {
+                if (posY < 0 || posY > canvas.height) {
                     isOutOfBounds = true;
                 }
 
@@ -377,7 +382,8 @@
 
                 const currentSpeed = Math.hypot(vx, vy);
 
-                if (currentSpeed > 0.12 && posX < canvas.width + 50 && !isOutOfBounds) {
+                // 完全停止（スピードが一定以下）したらアニメーション終了
+                if (currentSpeed > 0.01 && posX < RINK_END_X && !isOutOfBounds) {
                     requestAnimationFrame(animate);
                 } else {
                     trialCount++;
@@ -385,7 +391,8 @@
                     let calculatedDistance = getDistanceFromX(posX);
                     let displayDistance = calculatedDistance.toFixed(3);
 
-                    if (calculatedDistance > MAX_DISTANCE_M || posX < launcher.restX || isOutOfBounds) {
+                    // 2300mオーバーまたは枠外飛び出しのみ「NA」
+                    if (calculatedDistance > MAX_DISTANCE_M || isOutOfBounds) {
                         displayDistance = 'NA';
                     } else {
                         stoneHits.push({ x: posX, y: posY });
