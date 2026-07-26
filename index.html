@@ -40,14 +40,13 @@
     
     <div class="desc-box">
         <strong>【遊び方】</strong><br>
-        発射台内のコインをマウスで手前に引っ張って放すと発射します！<br>
+        発射台内のコインをマウスで手前に引っ張って放すと発射します！（※発射時に若干のランダムな誤差が生じます）<br>
         2300mを超えたり枠外へ飛び出した場合は「NA（測定不能）」になります。目標は1700mのハウス中心です。
     </div>
 
     <!-- 上部設定パネル -->
     <div class="top-controls">
         <div class="control-item">
-            <!-- 修正: 作業標準もデフォルトでチェックを外し、初期状態要素を無効化 -->
             <input type="checkbox" id="chk-force" onchange="toggleParam('force')">
             <label for="chk-force">作業標準 (投球力制限)</label>
             <input type="range" id="param-force" min="40" max="160" value="120" oninput="updateVal('force')" class="disabled-input">
@@ -124,6 +123,11 @@
         let dragX = launcher.restX;
         let dragY = launcher.restY;
         let isAnimating = false;
+
+        // 乱数誤差を生成する関数 (-maxOffset 〜 +maxOffset)
+        function getRandomError(maxOffset) {
+            return (Math.random() * 2 - 1) * maxOffset;
+        }
 
         function calcPowerFromDx(dx) {
             return Math.round(dx * 1.6);
@@ -358,10 +362,19 @@
             const isGuide = document.getElementById('chk-guide').checked;
             const isFriction = document.getElementById('chk-friction').checked;
 
-            const dx = launcher.restX - dragX; 
-            const dy = dragY - launcher.restY; 
+            let dx = launcher.restX - dragX; 
+            let dy = dragY - launcher.restY; 
 
+            // 投球力の記録用（手で引いた直後の正確な強さ）
             const actualPower = calcPowerFromDx(dx);
+
+            // 発射速度にランダムな誤差（±0〜30の範囲）を与える処理
+            if (dx > 0) {
+                const noiseX = getRandomError(30); // X軸方向のブレ
+                const noiseY = getRandomError(15); // Y軸方向のブレ
+                dx = Math.max(0, dx + noiseX);
+                dy = dy + noiseY;
+            }
 
             const isZeroPull = (dx === 0 && dy === 0);
             
@@ -482,7 +495,7 @@
             document.body.removeChild(link);
         }
 
-        // 修正: 初期化時に各パラメータの非アクティブ状態を反映させる
+        // 初期表示設定
         toggleParam('force');
         toggleParam('guide');
         drawRink();
