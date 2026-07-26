@@ -52,6 +52,7 @@
         <div class="env-info">
             <div class="env-item">ロープ長 (X1): <span id="disp-rope" class="badge">- m</span></div>
             <div class="env-item">風速 (X2): <span id="disp-wind" class="badge">- m/s</span></div>
+            <div class="env-item">🎯 島の位置: <span id="disp-island" class="badge" style="background:#fef3c7; color:#b45309; border-color:#fcd34d;">- m</span></div>
             
             <div class="mode-section">
                 <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
@@ -104,14 +105,16 @@
         const pivotX = 100;
         const pivotY = 50;
         const groundY = 320;
-        
-        // ★ 1メートルあたりのピクセル数を縮小（1m = 5.5px に設定して 200m 付近まで収まるように修正）
         const SCALE = 5.5; 
         const DT = 0.05;
 
         let ropeLengthM = 10;
         let windSpeed = 0;
         
+        // 島の位置情報 (メートル単位)
+        let islandStartM = 120;
+        let islandWidthM = 20;
+
         const INITIAL_ANGLE_RAD = 75 * (Math.PI / 180);
         let gameState = 'IDLE'; 
         let angle = INITIAL_ANGLE_RAD;
@@ -124,16 +127,27 @@
         let isTargetAngleMode = false;
         let targetAngleRad = 0;
 
+        // 演出用の変数
+        let splashRadius = 0;
+        let splashAlpha = 0;
+
         function initTrial() {
             gameState = 'IDLE';
             ropeLengthM = parseFloat((Math.random() * 6 + 8).toFixed(1));
             windSpeed = parseFloat((Math.random() * 10 - 5).toFixed(1));
 
+            // 島を 100m 〜 150m の間のどこかに配置
+            islandStartM = Math.floor(Math.random() * 51) + 100; 
+            islandWidthM = 20; // 島の幅 20m
+
             document.getElementById('disp-rope').innerText = `${ropeLengthM} m`;
             document.getElementById('disp-wind').innerText = `${windSpeed > 0 ? '+' : ''}${windSpeed} m/s`;
+            document.getElementById('disp-island').innerText = `${islandStartM}m 〜 ${islandStartM + islandWidthM}m`;
 
             angle = INITIAL_ANGLE_RAD; 
             angleVel = 0;
+            splashRadius = 0;
+            splashAlpha = 0;
 
             draw();
         }
@@ -227,26 +241,67 @@
                 if (posY >= groundDistM) {
                     posY = groundDistM;
                     gameState = 'LANDED';
+                    
+                    // 海に落ちた場合は水しぶきアニメーションの初期化
+                    if (!isLandedOnIsland()) {
+                        splashRadius = 5;
+                        splashAlpha = 1.0;
+                    }
+                    
                     recordResult();
                 }
+            } else if (gameState === 'LANDED') {
+                // 水しぶきが広がるアニメーション
+                if (splashAlpha > 0) {
+                    splashRadius += 1.5;
+                    splashAlpha -= 0.04;
+                }
             }
+        }
+
+        // 島に着地したか判定する関数
+        function isLandedOnIsland() {
+            const finalDist = Math.max(0, posX);
+            // スタート地点（0m〜15m）か、島の上（islandStartM 〜 islandStartM + islandWidthM）
+            return (finalDist <= 15) || (finalDist >= islandStartM && finalDist <= islandStartM + islandWidthM);
         }
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // 地面
-            ctx.fillStyle = '#86efac';
+            // 1. 海（全面の水域）
+            ctx.fillStyle = '#38bdf8';
             ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
+
+            // 2. スタート地点の陸地 (0m〜15m)
+            const startLandPx = pivotX + 15 * SCALE;
+            ctx.fillStyle = '#86efac';
+            ctx.fillRect(0, groundY, startLandPx, canvas.height - groundY);
             ctx.strokeStyle = '#16a34a';
             ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.moveTo(0, groundY);
-            ctx.lineTo(canvas.width, groundY);
+            ctx.lineTo(startLandPx, groundY);
             ctx.stroke();
 
-            // ★ 目盛りの更新（20mごとに数字を表示し、200m付近まで収まるように設定）
-            ctx.fillStyle = '#15803d';
+            // 3. 島（ターゲット）の描画
+            const islandPx = pivotX + islandStartM * SCALE;
+            const islandWidthPx = islandWidthM * SCALE;
+            
+            // 砂浜
+            ctx.fillStyle = '#fef08a';
+            ctx.fillRect(islandPx - 5, groundY, islandWidthPx + 10, canvas.height - groundY);
+            // 草地（島の本隊）
+            ctx.fillStyle = '#4ade80';
+            ctx.fillRect(islandPx, groundY, islandWidthPx, canvas.height - groundY);
+            ctx.strokeStyle = '#15803d';
+            ctx.beginPath();
+            ctx.moveTo(islandPx, groundY);
+            ctx.lineTo(islandPx + islandWidthPx, groundY);
+            ctx.stroke();
+
+            // 4. 目盛り
+            ctx.fillStyle = '#0f172a';
             ctx.font = '11px sans-serif';
             for (let m = 0; m <= 200; m += 10) {
                 let x = pivotX + m * SCALE;
@@ -255,6 +310,7 @@
                 ctx.beginPath();
                 ctx.moveTo(x, groundY);
                 ctx.lineTo(x, groundY + (m % 20 === 0 ? 8 : 4));
+                ctx.strokeStyle = '#0284c7';
                 ctx.stroke();
                 if (m % 20 === 0) {
                     ctx.fillText(`${m}m`, x - 10, groundY + 22);
@@ -281,16 +337,32 @@
                 drawPy = pivotY + posY * SCALE;
             }
 
-            // ターザン
+            // 海へ落下の水しぶき描画（ザブン！アニメーション）
+            if (gameState === 'LANDED' && !isLandedOnIsland() && splashAlpha > 0) {
+                ctx.save();
+                ctx.strokeStyle = `rgba(255, 255, 255, ${splashAlpha})`;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.ellipse(drawPx, groundY + 5, splashRadius * 1.5, splashRadius * 0.5, 0, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // ターザン本体（海に落ちた場合は少し沈める）
+            let charY = drawPy;
+            if (gameState === 'LANDED' && !isLandedOnIsland()) {
+                charY = groundY + 6; // 海の中に少し沈める
+            }
+
             ctx.beginPath();
-            ctx.arc(drawPx, drawPy, 10, 0, Math.PI * 2);
+            ctx.arc(drawPx, charY, 10, 0, Math.PI * 2);
             ctx.fillStyle = '#ea580c';
             ctx.fill();
             ctx.strokeStyle = '#431407';
             ctx.lineWidth = 2;
             ctx.stroke();
 
-            // UIテキスト
+            // UIテキスト＆祝福テキスト
             ctx.fillStyle = '#0f172a';
             ctx.font = 'bold 15px sans-serif';
             const isAuto = document.getElementById('chk-auto-mode').checked;
@@ -302,9 +374,12 @@
                     ctx.fillText('クリックで手を離す！', drawPx + 15, drawPy);
                 }
             } else if (gameState === 'LANDED') {
-                const distanceM = Math.max(0, posX).toFixed(2);
-                ctx.fillStyle = '#dc2626';
-                ctx.fillText(`到達距離: ${distanceM} m (画面クリックで次へ)`, drawPx - 60, drawPy - 20);
+                // 着地成功時のみ Congratulations! を表示
+                if (isLandedOnIsland()) {
+                    ctx.fillStyle = '#16a34a';
+                    ctx.font = 'bold 22px sans-serif';
+                    ctx.fillText('🎉 Congratulations!', drawPx - 80, drawPy - 30);
+                }
             }
         }
 
