@@ -47,14 +47,14 @@
     <!-- 上部設定パネル -->
     <div class="top-controls">
         <div class="control-item">
-            <input type="checkbox" id="chk-force" checked onchange="toggleParam('force')">
+            <!-- 修正: 作業標準もデフォルトでチェックを外し、初期状態要素を無効化 -->
+            <input type="checkbox" id="chk-force" onchange="toggleParam('force')">
             <label for="chk-force">作業標準 (投球力制限)</label>
-            <input type="range" id="param-force" min="40" max="160" value="120" oninput="updateVal('force')">
-            <span id="val-force" class="val-box">120</span>
+            <input type="range" id="param-force" min="40" max="160" value="120" oninput="updateVal('force')" class="disabled-input">
+            <span id="val-force" class="val-box disabled-input">120</span>
         </div>
 
         <div class="control-item">
-            <!-- 修正1: デフォルトでチェックを外し、初期状態で要素を無効化クラスへ -->
             <input type="checkbox" id="chk-guide" onchange="toggleParam('guide')">
             <label for="chk-guide">ガイド幅</label>
             <input type="range" id="param-guide" min="1" max="50" value="35" oninput="updateVal('guide')" class="disabled-input">
@@ -63,7 +63,6 @@
 
         <div class="control-item">
             <input type="checkbox" id="chk-friction" onchange="toggleParam('friction')">
-            <!-- 修正2: 「摩擦係数」から「摩擦（抵抗）」へ表記変更 -->
             <label for="chk-friction">摩擦（抵抗）</label>
             <input type="range" id="param-friction" min="0.0100" max="0.0600" step="0.0005" value="0.0346" oninput="updateVal('friction')" class="disabled-input">
             <span id="val-friction" class="val-box disabled-input">0.0346</span>
@@ -86,7 +85,6 @@
                             <th>試行</th>
                             <th>投球力(実測)</th>
                             <th>ガイド幅</th>
-                            <!-- 修正2: 表頭の「摩擦係数」を「摩擦（抵抗）」へ変更 -->
                             <th>摩擦（抵抗）</th>
                             <th>到達距離(横)</th>
                             <th>直線距離(斜め)</th>
@@ -468,7 +466,6 @@
                 return;
             }
 
-            // 修正2: CSVヘッダーの「摩擦係数」を「摩擦（抵抗）」へ変更
             let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
             csvContent += "試行,投球力(実測),ガイド幅,摩擦（抵抗）,到達距離(横),直線距離(斜め)\n";
 
@@ -485,7 +482,8 @@
             document.body.removeChild(link);
         }
 
-        // 修正1: 初期化時にガイドの非アクティブ状態を反映させる
+        // 修正: 初期化時に各パラメータの非アクティブ状態を反映させる
+        toggleParam('force');
         toggleParam('guide');
         drawRink();
     </script>
