@@ -38,7 +38,7 @@
     
     <div class="desc-box">
         <strong>【遊び方】</strong><br>
-        1. 画面（キャンバス）をクリックすると振り子がゆっくり揺れ始めます。<br>
+        1. 画面（キャンバス）をクリックすると振り子が揺れ始めます。<br>
         2. タイミングよくクリックしてロープを離し、遠くまで飛びましょう！<br>
         3. 試行ごとに「ロープの長さ」と「風速」がランダムに変化します。
     </div>
@@ -100,7 +100,7 @@
         let angle = Math.PI / 3; // 60度からスタート
         let angleVel = 0;
 
-        // 飛行状態（物理単位：メートル・秒）
+        // 飛行状態
         let posX = 0, posY = 0;
         let velX = 0, velY = 0;
         let releaseAngleDeg = 0;
@@ -125,21 +125,20 @@
             } else if (gameState === 'SWINGING') {
                 gameState = 'FLYING';
                 
-                // 離した瞬間の位置（メートル単位、支点原点）
+                // 離した瞬間の位置（メートル単位）
                 const relX = ropeLengthM * Math.sin(angle);
                 const relY = ropeLengthM * Math.cos(angle);
                 
                 posX = relX;
                 posY = relY;
 
-                // 接線方向の物理速度 (v = L * dAngle/dt)
-                const tangentialSpeed = ropeLengthM * angleVel;
+                // 速度（適正な飛び感になるよう倍率を調整）
+                const tangentialSpeed = ropeLengthM * angleVel * 1.8;
                 
-                // 角度に応じた分解速度 (慣性)
                 velX = tangentialSpeed * Math.cos(angle);
                 velY = -tangentialSpeed * Math.sin(angle);
 
-                // 手放し角度（鉛直下からの角度Deg）
+                // 手放し角度（度数法）
                 releaseAngleDeg = (angle * (180 / Math.PI)).toFixed(1);
             } else if (gameState === 'LANDED') {
                 initTrial();
@@ -148,18 +147,17 @@
 
         function update() {
             if (gameState === 'SWINGING') {
-                // 振り子の単振子近似方程式
+                // 振り子の単振子方程式（適度なスピード感：係数 0.02）
                 const g = 9.8;
                 let angleAccel = -(g / ropeLengthM) * Math.sin(angle);
                 
-                // 動きを視認しやすく落ち着かせる調整
-                angleVel += angleAccel * DT * 0.5;
-                angle += angleVel * DT * 0.5;
+                angleVel += angleAccel * 0.02;
+                angle += angleVel;
 
             } else if (gameState === 'FLYING') {
-                const g = 9.8;
-                // 空気抵抗・風の影響（マイルドに計算）
-                const windEffect = (windSpeed - velX) * 0.15;
+                // 重力を少しマイルドにして滞空時間を確保 (3.5 m/s^2 相当の感覚)
+                const g = 3.5;
+                const windEffect = (windSpeed - velX) * 0.08;
                 
                 velX += windEffect * DT;
                 velY += g * DT;
@@ -167,7 +165,7 @@
                 posX += velX * DT;
                 posY += velY * DT;
 
-                // 地面判定 (支点から地面までのメートル距離 = (groundY - pivotY) / SCALE)
+                // 地面判定
                 const groundDistM = (groundY - pivotY) / SCALE;
                 if (posY >= groundDistM) {
                     posY = groundDistM;
