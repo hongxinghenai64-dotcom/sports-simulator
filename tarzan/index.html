@@ -39,7 +39,7 @@
     <div class="desc-box">
         <strong>【遊び方】</strong><br>
         1. 画面（キャンバス）をクリックすると振り子がゆっくり揺れ始めます。<br>
-        2. もう一度タイミングよくクリックしてロープを離し、遠くまで飛びましょう！<br>
+        2. タイミングよくクリックしてロープを離し、遠くまで飛びましょう！<br>
         3. 試行ごとに「ロープの長さ」と「風速」がランダムに変化します。
     </div>
 
@@ -84,11 +84,12 @@
         let trialCount = 0;
         let historyData = [];
 
-        // 物理パラメータ
+        // 物理・スケール定数
         const pivotX = 150;
         const pivotY = 50;
         const groundY = 320;
-        const g = 9.8;
+        const SCALE = 12; // 1メートル = 12ピクセル
+        const DT = 0.05;   // タイムステップ
 
         // 試行ごとの環境変数
         let ropeLengthM = 10;
@@ -96,26 +97,24 @@
         
         // 振り子状態
         let gameState = 'IDLE'; 
-        let angle = Math.PI / 3;
+        let angle = Math.PI / 3; // 60度からスタート
         let angleVel = 0;
-        let currentRopePx = 150;
 
-        // 飛行状態
-        let px = 0, py = 0;
-        let vx = 0, vy = 0;
+        // 飛行状態（物理単位：メートル・秒）
+        let posX = 0, posY = 0;
+        let velX = 0, velY = 0;
         let releaseAngleDeg = 0;
 
         function initTrial() {
             gameState = 'IDLE';
-            ropeLengthM = (Math.random() * 6 + 8).toFixed(1); // 8.0 ~ 14.0m
-            windSpeed = (Math.random() * 10 - 5).toFixed(1);   // -5.0 ~ +5.0m/s
+            ropeLengthM = parseFloat((Math.random() * 6 + 8).toFixed(1)); // 8.0 ~ 14.0m
+            windSpeed = parseFloat((Math.random() * 10 - 5).toFixed(1));   // -5.0 ~ +5.0m/s
 
             document.getElementById('disp-rope').innerText = `${ropeLengthM} m`;
             document.getElementById('disp-wind').innerText = `${windSpeed > 0 ? '+' : ''}${windSpeed} m/s`;
 
-            angle = Math.PI / 3.2; 
+            angle = Math.PI / 3; 
             angleVel = 0;
-            currentRopePx = ropeLengthM * 15;
 
             draw();
         }
@@ -126,14 +125,21 @@
             } else if (gameState === 'SWINGING') {
                 gameState = 'FLYING';
                 
-                px = pivotX + currentRopePx * Math.sin(angle);
-                py = pivotY + currentRopePx * Math.cos(angle);
+                // 離した瞬間の位置（メートル単位、支点原点）
+                const relX = ropeLengthM * Math.sin(angle);
+                const relY = ropeLengthM * Math.cos(angle);
+                
+                posX = relX;
+                posY = relY;
 
-                // 速度計算（適切な飛距離が出るようスケール調整）
-                const speed = angleVel * currentRopePx * 2.5; 
-                vx = speed * Math.cos(angle);
-                vy = -speed * Math.sin(angle);
+                // 接線方向の物理速度 (v = L * dAngle/dt)
+                const tangentialSpeed = ropeLengthM * angleVel;
+                
+                // 角度に応じた分解速度 (慣性)
+                velX = tangentialSpeed * Math.cos(angle);
+                velY = -tangentialSpeed * Math.sin(angle);
 
+                // 手放し角度（鉛直下からの角度Deg）
                 releaseAngleDeg = (angle * (180 / Math.PI)).toFixed(1);
             } else if (gameState === 'LANDED') {
                 initTrial();
@@ -142,21 +148,29 @@
 
         function update() {
             if (gameState === 'SWINGING') {
-                // 揺れる速度を抑えるため係数を 0.03 から 0.008 に減速
-                let angleAccel = -(g / ropeLengthM) * Math.sin(angle) * 0.008;
-                angleVel += angleAccel;
-                angle += angleVel;
+                // 振り子の単振子近似方程式
+                const g = 9.8;
+                let angleAccel = -(g / ropeLengthM) * Math.sin(angle);
+                
+                // 動きを視認しやすく落ち着かせる調整
+                angleVel += angleAccel * DT * 0.5;
+                angle += angleVel * DT * 0.5;
 
             } else if (gameState === 'FLYING') {
-                vx += (windSpeed * 0.02); // 風の影響
-                vy += 0.25;               // 重力
+                const g = 9.8;
+                // 空気抵抗・風の影響（マイルドに計算）
+                const windEffect = (windSpeed - velX) * 0.15;
+                
+                velX += windEffect * DT;
+                velY += g * DT;
 
-                px += vx;
-                py += vy;
+                posX += velX * DT;
+                posY += velY * DT;
 
-                // 着地判定
-                if (py >= groundY - 10) {
-                    py = groundY - 10;
+                // 地面判定 (支点から地面までのメートル距離 = (groundY - pivotY) / SCALE)
+                const groundDistM = (groundY - pivotY) / SCALE;
+                if (posY >= groundDistM) {
+                    posY = groundDistM;
                     gameState = 'LANDED';
                     recordResult();
                 }
@@ -176,11 +190,11 @@
             ctx.lineTo(canvas.width, groundY);
             ctx.stroke();
 
-            // 目盛り
+            // 目盛り (10m刻み)
             ctx.fillStyle = '#15803d';
             ctx.font = '11px sans-serif';
-            for (let m = 0; m <= 60; m += 5) {
-                let x = pivotX + m * 15;
+            for (let m = 0; m <= 80; m += 5) {
+                let x = pivotX + m * SCALE;
                 ctx.beginPath();
                 ctx.moveTo(x, groundY);
                 ctx.lineTo(x, groundY + 8);
@@ -194,49 +208,50 @@
             ctx.fillStyle = '#334155';
             ctx.fillRect(pivotX - 10, pivotY - 10, 20, 10);
 
-            // プレイヤー位置
-            let playerX, playerY;
+            // 描画ピクセル座標の計算
+            let drawPx, drawPy;
             if (gameState === 'SWINGING' || gameState === 'IDLE') {
-                playerX = pivotX + currentRopePx * Math.sin(angle);
-                playerY = pivotY + currentRopePx * Math.cos(angle);
+                drawPx = pivotX + (ropeLengthM * Math.sin(angle)) * SCALE;
+                drawPy = pivotY + (ropeLengthM * Math.cos(angle)) * SCALE;
 
+                // ロープ
                 ctx.strokeStyle = '#78350f';
                 ctx.lineWidth = 3;
                 ctx.beginPath();
                 ctx.moveTo(pivotX, pivotY);
-                ctx.lineTo(playerX, playerY);
+                ctx.lineTo(drawPx, drawPy);
                 ctx.stroke();
             } else {
-                playerX = px;
-                playerY = py;
+                drawPx = pivotX + posX * SCALE;
+                drawPy = pivotY + posY * SCALE;
             }
 
-            // ターザン
+            // ターザン本体
             ctx.beginPath();
-            ctx.arc(playerX, playerY, 12, 0, Math.PI * 2);
+            ctx.arc(drawPx, drawPy, 10, 0, Math.PI * 2);
             ctx.fillStyle = '#ea580c';
             ctx.fill();
             ctx.strokeStyle = '#431407';
             ctx.lineWidth = 2;
             ctx.stroke();
 
-            // メッセージ
+            // UIテキスト
             ctx.fillStyle = '#0f172a';
-            ctx.font = 'bold 16px sans-serif';
+            ctx.font = 'bold 15px sans-serif';
             if (gameState === 'IDLE') {
-                ctx.fillText('クリックしてスタート', pivotX + 30, pivotY + 50);
+                ctx.fillText('クリックで揺れ始めます', pivotX + 30, pivotY + 40);
             } else if (gameState === 'SWINGING') {
-                ctx.fillText('タイミングよくクリックでジャンプ！', playerX + 20, playerY);
+                ctx.fillText('クリックで手を離す！', drawPx + 15, drawPy);
             } else if (gameState === 'LANDED') {
-                const distanceM = Math.max(0, ((playerX - pivotX) / 15)).toFixed(2);
+                const distanceM = Math.max(0, posX).toFixed(2);
                 ctx.fillStyle = '#dc2626';
-                ctx.fillText(`記録: ${distanceM} m (クリックで次へ)`, playerX - 50, playerY - 30);
+                ctx.fillText(`到達距離: ${distanceM} m (クリックで次へ)`, drawPx - 60, drawPy - 20);
             }
         }
 
         function recordResult() {
             trialCount++;
-            const finalDistanceM = Math.max(0, ((px - pivotX) / 15)).toFixed(2);
+            const finalDistanceM = Math.max(0, posX).toFixed(2);
 
             const record = {
                 trial: trialCount,
