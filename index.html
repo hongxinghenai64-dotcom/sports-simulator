@@ -12,7 +12,7 @@
         .top-controls { background: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 20px; align-items: center; }
         .control-item { display: flex; align-items: center; gap: 10px; }
         .control-item label { font-weight: bold; font-size: 14px; cursor: pointer; }
-        .val-box { width: 60px; text-align: center; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; background: #f8fafc; font-size: 14px; }
+        .val-box { width: 60px; text-align: center; border: 1px solid #ccc; border-radius: 4px; padding: 4px; font-weight: bold; background: #f8fafc; font-size: 14px; }
         
         .simulation-container { display: flex; flex-direction: column; gap: 15px; }
         canvas { background-color: #a5b4fc; border: 2px solid #6366f1; border-radius: 8px; width: 100%; max-width: 1200px; height: 260px; display: block; cursor: crosshair; }
@@ -40,8 +40,8 @@
     
     <div class="desc-box">
         <strong>【遊び方】</strong><br>
-        発射台内のコインをマウスで手前に引っ張って放すと発射します！下に引いて放すと上方向に飛んでいきます。<br>
-        2300mを超えたり枠外へ飛び出た場合は「NA（測定不能）」になります。目標は1700mのハウス中心です。
+        発射台内のコインをマウスで手前に引っ張って放すと発射します！<br>
+        2300mを超えたりコースアウトした場合は「NA（測定不能）」になります。目標は1700mのハウス中心です。
     </div>
 
     <!-- 上部設定パネル -->
@@ -49,7 +49,6 @@
         <div class="control-item">
             <input type="checkbox" id="chk-force" checked onchange="toggleParam('force')">
             <label for="chk-force">作業標準 (投球力制限)</label>
-            <!-- 制限下限を 40 まで拡大 -->
             <input type="range" id="param-force" min="40" max="160" value="120" oninput="updateVal('force')">
             <span id="val-force" class="val-box">120</span>
         </div>
@@ -125,6 +124,7 @@
         let dragY = launcher.restY;
         let isAnimating = false;
 
+        // 引っ張り量からPowerを定義（最大引っぱり100pxでPower160）
         function calcPowerFromDx(dx) {
             return Math.round(dx * 1.6);
         }
@@ -216,7 +216,7 @@
             ctx.fillStyle = '#a5b4fc';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 目盛り線（100m〜2300m、100m刻み）
+            // 目盛り線
             ctx.strokeStyle = '#475569';
             ctx.fillStyle = '#0f172a';
             ctx.font = 'bold 11px sans-serif';
@@ -233,7 +233,7 @@
                 }
             }
 
-            // ハウス（目標円）：中心を 1700m に設定
+            // ハウス（目標円）：1700m
             const houseX = getXFromDistance(1700);
             const houseY = canvas.height / 2;
             const outerRadius = (100 * (RINK_WIDTH_PX / (MAX_DISTANCE_M - 100))); 
@@ -325,7 +325,7 @@
             });
         }
 
-        // 投球物理計算（120で2200m付近へ着地）
+        // 投球物理計算（120で2200m前後へ着地する絶対調整）
         function shootStone() {
             isAnimating = true;
 
@@ -338,8 +338,9 @@
 
             const isZeroPull = (dx === 0 && dy === 0);
             
-            // 初速計算を調整 (120の引っ張りで2200m〜2250mに到達)
-            let initialSpeed = Math.hypot(dx, dy) * 0.165; 
+            // 初速と減速の完全バランス調整
+            // dx = 75px (Power 120) の時、距離が約 2200m になる計算式
+            let initialSpeed = Math.hypot(dx, dy) * 0.082; 
             if (isZeroPull) initialSpeed = 0;
 
             const angle = Math.atan2(-dy, dx); 
@@ -350,18 +351,19 @@
             let vy = Math.sin(angle) * initialSpeed; 
 
             const temp = isTemp ? parseFloat(document.getElementById('param-temp').value) : 2.0;
-            const frictionCoefficient = 0.008 - (temp * 0.0001); 
+            const frictionCoefficient = 0.0075 - (temp * 0.0001); 
 
             let isOutOfBounds = false;
 
             function animate() {
-                posX += vx * 3.5; 
-                posY += vy * 3.5;
+                posX += vx * 3.0; 
+                posY += vy * 3.0;
 
                 vx *= (1 - frictionCoefficient);
                 vy *= (1 - frictionCoefficient);
 
-                if (posY < 0 || posY > canvas.height) {
+                // コースアウト判定（上下端から少しはみ出した場合のみ）
+                if (posY < -10 || posY > canvas.height + 10) {
                     isOutOfBounds = true;
                 }
 
@@ -375,7 +377,7 @@
 
                 const currentSpeed = Math.hypot(vx, vy);
 
-                if (currentSpeed > 0.18 && posX < canvas.width + 50 && !isOutOfBounds) {
+                if (currentSpeed > 0.12 && posX < canvas.width + 50 && !isOutOfBounds) {
                     requestAnimationFrame(animate);
                 } else {
                     trialCount++;
