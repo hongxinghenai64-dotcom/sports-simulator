@@ -25,6 +25,7 @@
         .btn-reset { background-color: #64748b; color: white; }
         .btn-reset:hover { background-color: #475569; }
         
+        /* 修正: 摩擦係数列の追加に伴い横幅を560pxに拡大 */
         .table-container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 560px; max-height: 250px; overflow-y: auto; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: center; }
         th, td { padding: 6px 8px; border: 1px solid #cbd5e1; }
@@ -41,28 +42,30 @@
     <div class="desc-box">
         <strong>【遊び方】</strong><br>
         発射台内のコインをマウスで手前に引っ張って放すと発射します！<br>
-        2300mを超えたり枠外へ飛び出した場合は「NA（測定不能）」になります。目標は1700mのハウス中心です。10回連続でハウスの中に入れてみよう！
+        2300mを超えたり枠外へ飛び出した場合は「NA（測定不能）」になります。目標は1700mのハウス中心です。
     </div>
 
     <!-- 上部設定パネル -->
     <div class="top-controls">
         <div class="control-item">
-            <input type="checkbox" id="chk-force" onchange="toggleParam('force')">
+            <input type="checkbox" id="chk-force" checked onchange="toggleParam('force')">
             <label for="chk-force">作業標準 (投球力制限)</label>
-            <input type="range" id="param-force" min="40" max="160" value="120" oninput="updateVal('force')" class="disabled-input">
-            <span id="val-force" class="val-box disabled-input">120</span>
+            <input type="range" id="param-force" min="40" max="160" value="120" oninput="updateVal('force')">
+            <span id="val-force" class="val-box">120</span>
         </div>
 
         <div class="control-item">
-            <input type="checkbox" id="chk-guide" onchange="toggleParam('guide')">
+            <input type="checkbox" id="chk-guide" checked onchange="toggleParam('guide')">
             <label for="chk-guide">ガイド幅</label>
-            <input type="range" id="param-guide" min="1" max="50" value="35" oninput="updateVal('guide')" class="disabled-input">
-            <span id="val-guide" class="val-box disabled-input">35</span>
+            <!-- 修正: minを1にし、最小時(1)はブレ幅が完全0になるよう調整 -->
+            <input type="range" id="param-guide" min="1" max="50" value="35" oninput="updateVal('guide')">
+            <span id="val-guide" class="val-box">35</span>
         </div>
 
         <div class="control-item">
             <input type="checkbox" id="chk-friction" onchange="toggleParam('friction')">
-            <label for="chk-friction">摩擦（抵抗）</label>
+            <label for="chk-friction">摩擦係数</label>
+            <!-- 修正: 気温から摩擦係数に変更（デフォルト0.0346） -->
             <input type="range" id="param-friction" min="0.0100" max="0.0600" step="0.0005" value="0.0346" oninput="updateVal('friction')" class="disabled-input">
             <span id="val-friction" class="val-box disabled-input">0.0346</span>
         </div>
@@ -84,7 +87,7 @@
                             <th>試行</th>
                             <th>投球力(実測)</th>
                             <th>ガイド幅</th>
-                            <th>摩擦（抵抗）</th>
+                            <th>摩擦係数</th>
                             <th>到達距離(横)</th>
                             <th>直線距離(斜め)</th>
                         </tr>
@@ -123,11 +126,6 @@
         let dragX = launcher.restX;
         let dragY = launcher.restY;
         let isAnimating = false;
-
-        // 乱数誤差を生成する関数 (-maxOffset 〜 +maxOffset)
-        function getRandomError(maxOffset) {
-            return (Math.random() * 2 - 1) * maxOffset;
-        }
 
         function calcPowerFromDx(dx) {
             return Math.round(dx * 1.6);
@@ -194,6 +192,7 @@
             const isGuide = document.getElementById('chk-guide').checked;
             const guideVal = isGuide ? parseFloat(document.getElementById('param-guide').value) : 50;
             
+            // 修正: ガイド幅1の時はブレを完全0にし、真っ直ぐしか動かないように変更
             const maxYSpread = (guideVal - 1) / 49 * 60; 
             dragY = Math.min(launcher.restY + maxYSpread, Math.max(launcher.restY - maxYSpread, mousePos.y));
 
@@ -362,19 +361,11 @@
             const isGuide = document.getElementById('chk-guide').checked;
             const isFriction = document.getElementById('chk-friction').checked;
 
-            let dx = launcher.restX - dragX; 
-            let dy = dragY - launcher.restY; 
+            const dx = launcher.restX - dragX; 
+            const dy = dragY - launcher.restY; 
 
-            // 投球力の記録用（手で引いた直後の正確な強さ）
+            // 修正: チェックのON/OFFに関わらず「実際に手前に引っ張って放した距離（実測値）」から投球力を算出
             const actualPower = calcPowerFromDx(dx);
-
-            // 発射速度にランダムな誤差（±0〜30の範囲）を与える処理
-            if (dx > 0) {
-                const noiseX = getRandomError(30); // X軸方向のブレ
-                const noiseY = getRandomError(15); // Y軸方向のブレ
-                dx = Math.max(0, dx + noiseX);
-                dy = dy + noiseY;
-            }
 
             const isZeroPull = (dx === 0 && dy === 0);
             
@@ -388,6 +379,7 @@
             let vx = Math.cos(angle) * initialSpeed;
             let vy = Math.sin(angle) * initialSpeed; 
 
+            // 修正: 摩擦係数の動的設定（デフォルトは0.0346）
             const frictionCoefficient = isFriction ? parseFloat(document.getElementById('param-friction').value) : 0.0346; 
 
             let isOutOfBounds = false;
@@ -433,14 +425,15 @@
 
                     const record = {
                         trial: trialCount,
-                        force: actualPower,
+                        force: actualPower, // 修正: 実測値をセット
                         guide: isGuide ? parseFloat(document.getElementById('param-guide').value) : '-',
-                        friction: frictionCoefficient.toFixed(4),
+                        friction: frictionCoefficient.toFixed(4), // 修正: 摩擦係数を記録
                         distanceX: displayX,
                         distanceDiag: displayDiag
                     };
                     historyData.push(record);
 
+                    // 修正: 摩擦係数列を追加したテーブル出力
                     const tbody = document.getElementById('data-table');
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
@@ -479,8 +472,9 @@
                 return;
             }
 
+            // 修正: CSVヘッダーおよび行データに「摩擦係数」を追加
             let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-            csvContent += "試行,投球力(実測),ガイド幅,摩擦（抵抗）,到達距離(横),直線距離(斜め)\n";
+            csvContent += "試行,投球力(実測),ガイド幅,摩擦係数,到達距離(横),直線距離(斜め)\n";
 
             historyData.forEach(row => {
                 csvContent += `${row.trial},${row.force},${row.guide},${row.friction},${row.distanceX},${row.distanceDiag}\n`;
@@ -495,9 +489,6 @@
             document.body.removeChild(link);
         }
 
-        // 初期表示設定
-        toggleParam('force');
-        toggleParam('guide');
         drawRink();
     </script>
 </body>
