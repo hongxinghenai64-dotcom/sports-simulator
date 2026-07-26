@@ -16,7 +16,6 @@
         .env-item { display: flex; align-items: center; gap: 8px; }
         .badge { background: #e0f2fe; color: #0369a1; padding: 4px 10px; border-radius: 4px; border: 1px solid #7dd3fc; }
 
-        /* モード切替・検証用UI */
         .mode-section { background: #fef3c7; border: 2px solid #f59e0b; padding: 10px 15px; border-radius: 8px; display: flex; align-items: center; gap: 15px; font-size: 14px; }
         .angle-input-group { display: flex; align-items: center; gap: 8px; }
         .angle-input-group input[type="number"] { width: 80px; padding: 6px; font-size: 14px; border: 1px solid #cbd5e1; border-radius: 4px; text-align: right; }
@@ -45,12 +44,11 @@
     
     <div class="desc-box">
         <strong>【使い方】</strong><br>
-        1. <strong>通常モード:</strong> 画面クリックでスタートし、タイミングよくクリックしてジャンプ（データ収集用）。<br>
-        2. <strong>角度指定モード:</strong> 重回帰分析で導き出した計算式を使って、目標距離に飛ばす「手放し角度」を直接入力してジャンプ（成果検証用）。
+        1. <strong>通常モード:</strong> 画面クリックでスタートし、タイミングよくクリックしてジャンプ。<br>
+        2. <strong>角度指定モード:</strong> 手放し角度を直接入力してジャンプ。
     </div>
 
     <div class="simulation-container">
-        <!-- 現在の環境条件を表示 -->
         <div class="env-info">
             <div class="env-item">ロープ長 (X1): <span id="disp-rope" class="badge">- m</span></div>
             <div class="env-item">風速 (X2): <span id="disp-wind" class="badge">- m/s</span></div>
@@ -103,35 +101,33 @@
         let historyData = [];
 
         // 物理・スケール定数
-        const pivotX = 150;
+        const pivotX = 100;
         const pivotY = 50;
         const groundY = 320;
-        const SCALE = 12; // 1メートル = 12ピクセル
+        
+        // ★ 1メートルあたりのピクセル数を縮小（1m = 5.5px に設定して 200m 付近まで収まるように修正）
+        const SCALE = 5.5; 
         const DT = 0.05;
 
-        // 試行ごとの環境変数
         let ropeLengthM = 10;
         let windSpeed = 0;
         
-        // 振り子状態（折り返し地点を75°に設定）
         const INITIAL_ANGLE_RAD = 75 * (Math.PI / 180);
         let gameState = 'IDLE'; 
         let angle = INITIAL_ANGLE_RAD;
         let angleVel = 0;
 
-        // 飛行状態
         let posX = 0, posY = 0;
         let velX = 0, velY = 0;
         let releaseAngleDeg = 0;
 
-        // 自動指定発射フラグ
         let isTargetAngleMode = false;
         let targetAngleRad = 0;
 
         function initTrial() {
             gameState = 'IDLE';
-            ropeLengthM = parseFloat((Math.random() * 6 + 8).toFixed(1)); // 8.0 ~ 14.0m
-            windSpeed = parseFloat((Math.random() * 10 - 5).toFixed(1));   // -5.0 ~ +5.0m/s
+            ropeLengthM = parseFloat((Math.random() * 6 + 8).toFixed(1));
+            windSpeed = parseFloat((Math.random() * 10 - 5).toFixed(1));
 
             document.getElementById('disp-rope').innerText = `${ropeLengthM} m`;
             document.getElementById('disp-wind').innerText = `${windSpeed > 0 ? '+' : ''}${windSpeed} m/s`;
@@ -190,14 +186,11 @@
         function releaseRope() {
             gameState = 'FLYING';
             
-            // 離した瞬間の位置（メートル単位）
             posX = ropeLengthM * Math.sin(angle);
             posY = ropeLengthM * Math.cos(angle);
 
-            // 接線方向の速度成分（慣性）
             const speed = angleVel * ropeLengthM * 18.0;
             
-            // 角度に応じた分解（接線ベクトル: vx = speed * cos(θ), vy = -speed * sin(θ)）
             velX = speed * Math.cos(angle);
             velY = -speed * Math.sin(angle);
 
@@ -210,11 +203,9 @@
                 const g = 9.8;
                 let angleAccel = -(g / ropeLengthM) * Math.sin(angle);
                 
-                // 振り子の自然な揺れスピード
                 angleVel += angleAccel * 0.015;
                 angle += angleVel;
 
-                // 角度指定モード：目標角度に達した瞬間自動手放し
                 if (isTargetAngleMode) {
                     if (angleVel > 0 && angle >= targetAngleRad) {
                         angle = targetAngleRad;
@@ -223,10 +214,7 @@
                 }
 
             } else if (gameState === 'FLYING') {
-                // 重力（自然な滞空時間の確保）
                 const g = 4.5;
-                
-                // 風による影響
                 const windEffect = (windSpeed * 0.15);
                 
                 velX += windEffect * DT;
@@ -235,7 +223,6 @@
                 posX += velX * DT;
                 posY += velY * DT;
 
-                // 地面判定
                 const groundDistM = (groundY - pivotY) / SCALE;
                 if (posY >= groundDistM) {
                     posY = groundDistM;
@@ -258,17 +245,19 @@
             ctx.lineTo(canvas.width, groundY);
             ctx.stroke();
 
-            // 目盛り
+            // ★ 目盛りの更新（20mごとに数字を表示し、200m付近まで収まるように設定）
             ctx.fillStyle = '#15803d';
             ctx.font = '11px sans-serif';
-            for (let m = 0; m <= 80; m += 5) {
+            for (let m = 0; m <= 200; m += 10) {
                 let x = pivotX + m * SCALE;
+                if (x > canvas.width) break;
+                
                 ctx.beginPath();
                 ctx.moveTo(x, groundY);
-                ctx.lineTo(x, groundY + 8);
+                ctx.lineTo(x, groundY + (m % 20 === 0 ? 8 : 4));
                 ctx.stroke();
-                if (m % 10 === 0) {
-                    ctx.fillText(`${m}m`, x - 8, groundY + 22);
+                if (m % 20 === 0) {
+                    ctx.fillText(`${m}m`, x - 10, groundY + 22);
                 }
             }
 
@@ -276,7 +265,6 @@
             ctx.fillStyle = '#334155';
             ctx.fillRect(pivotX - 10, pivotY - 10, 20, 10);
 
-            // 描画座標計算
             let drawPx, drawPy;
             if (gameState === 'SWINGING' || gameState === 'IDLE') {
                 drawPx = pivotX + (ropeLengthM * Math.sin(angle)) * SCALE;
@@ -364,11 +352,11 @@
                 return;
             }
 
-            let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-            csvContent += "試行,ロープ長(X1),風速(X2),手放し角度(X3),到達距離(Y)\n";
+            let csvContent = "data:text/csv;charset=utf-8,\\uFEFF";
+            csvContent += "試行,ロープ長(X1),風速(X2),手放し角度(X3),到達距離(Y)\\n";
 
             historyData.forEach(row => {
-                csvContent += `${row.trial},${row.rope},${row.wind},${row.angle},${row.distance}\n`;
+                csvContent += `${row.trial},${row.rope},${row.wind},${row.angle},${row.distance}\\n`;
             });
 
             const encodedUri = encodeURI(csvContent);
