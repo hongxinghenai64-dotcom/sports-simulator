@@ -1,1 +1,491 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>コイン射撃シミュレーター</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f0f4f8; margin: 0; padding: 20px; color: #333; }
+        h1 { font-size: 24px; margin-bottom: 10px; color: #1e3a8a; }
+        
+        .top-controls { background: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 20px; align-items: center; }
+        .control-item { display: flex; align-items: center; gap: 10px; }
+        .control-item label { font-weight: bold; font-size: 14px; cursor: pointer; }
+        .val-box { width: 70px; text-align: center; border: 1px solid #ccc; border-radius: 4px; padding: 4px; font-weight: bold; background: #f8fafc; font-size: 14px; }
+        
+        .simulation-container { display: flex; flex-direction: column; gap: 15px; }
+        canvas { background-color: #a5b4fc; border: 2px solid #6366f1; border-radius: 8px; width: 100%; max-width: 1200px; height: 260px; display: block; cursor: crosshair; }
+        
+        .bottom-area { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
+        .btn-group { display: flex; gap: 10px; }
+        button { padding: 10px 20px; font-size: 14px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; transition: 0.2s; }
+        .btn-csv { background-color: #6366f1; color: white; }
+        .btn-csv:hover { background-color: #4f46e5; }
+        .btn-reset { background-color: #64748b; color: white; }
+        .btn-reset:hover { background-color: #475569; }
+        
+        .table-container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 560px; max-height: 250px; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: center; }
+        th, td { padding: 6px 8px; border: 1px solid #cbd5e1; }
+        th { background-color: #f1f5f9; font-weight: bold; position: sticky; top: 0; }
+        
+        .desc-box { background: #eff6ff; border-left: 4px solid #2563eb; padding: 10px 15px; border-radius: 4px; font-size: 13px; margin-bottom: 15px; }
+        .disabled-input { opacity: 0.4; pointer-events: none; }
+    </style>
+</head>
+<body>
 
+    <h1>🥌 コイン射撃シミュレーター</h1>
+    
+    <div class="desc-box">
+        <strong>【遊び方】</strong><br>
+        発射台内のコインをマウスで手前に引っ張って放すと発射します！<br>
+        2300mを超えたり枠外へ飛び出した場合は「NA（測定不能）」になります。目標は1700mのハウス中心です。10回連続でハウスの中に入れてみよう！
+    </div>
+
+    <!-- 上部設定パネル -->
+    <div class="top-controls">
+        <div class="control-item">
+            <!-- 修正: 作業標準もデフォルトでチェックを外し、初期状態要素を無効化 -->
+            <input type="checkbox" id="chk-force" onchange="toggleParam('force')">
+            <label for="chk-force">作業標準 (投球力制限)</label>
+            <input type="range" id="param-force" min="40" max="160" value="120" oninput="updateVal('force')" class="disabled-input">
+            <span id="val-force" class="val-box disabled-input">120</span>
+        </div>
+
+        <div class="control-item">
+            <input type="checkbox" id="chk-guide" onchange="toggleParam('guide')">
+            <label for="chk-guide">ガイド幅</label>
+            <input type="range" id="param-guide" min="1" max="50" value="35" oninput="updateVal('guide')" class="disabled-input">
+            <span id="val-guide" class="val-box disabled-input">35</span>
+        </div>
+
+        <div class="control-item">
+            <input type="checkbox" id="chk-friction" onchange="toggleParam('friction')">
+            <label for="chk-friction">摩擦（抵抗）</label>
+            <input type="range" id="param-friction" min="0.0100" max="0.0600" step="0.0005" value="0.0346" oninput="updateVal('friction')" class="disabled-input">
+            <span id="val-friction" class="val-box disabled-input">0.0346</span>
+        </div>
+    </div>
+
+    <div class="simulation-container">
+        <canvas id="canvas" width="1200" height="260"></canvas>
+        
+        <div class="bottom-area">
+            <div class="btn-group">
+                <button class="btn-csv" onclick="downloadCSV()">CSV出力</button>
+                <button class="btn-reset" onclick="resetData()">はじめから</button>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>試行</th>
+                            <th>投球力(実測)</th>
+                            <th>ガイド幅</th>
+                            <th>摩擦（抵抗）</th>
+                            <th>到達距離(横)</th>
+                            <th>直線距離(斜め)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="data-table">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let trialCount = 0;
+        let historyData = [];
+        let stoneHits = [];
+
+        // 発射台設定
+        const launcher = {
+            x: 20,
+            y: 50,
+            width: 130,
+            height: 160,
+            stoneRadius: 10,
+            restX: 130,
+            restY: 130
+        };
+
+        // スケール定義（0m〜2300m）
+        const MAX_DISTANCE_M = 2300;
+        const RINK_END_X = 1180; // 2300mの位置
+
+        let isDragging = false;
+        let dragX = launcher.restX;
+        let dragY = launcher.restY;
+        let isAnimating = false;
+
+        function calcPowerFromDx(dx) {
+            return Math.round(dx * 1.6);
+        }
+
+        function calcLimitXFromPower(power) {
+            const dx = power / 1.6;
+            return launcher.restX - dx;
+        }
+
+        function updateVal(param) {
+            document.getElementById(`val-${param}`).innerText = document.getElementById(`param-${param}`).value;
+            drawRink();
+        }
+
+        function toggleParam(param) {
+            const chk = document.getElementById(`chk-${param}`);
+            const slider = document.getElementById(`param-${param}`);
+            const val = document.getElementById(`val-${param}`);
+            if (chk.checked) {
+                slider.classList.remove('disabled-input');
+                val.classList.remove('disabled-input');
+            } else {
+                slider.classList.add('disabled-input');
+                val.classList.add('disabled-input');
+            }
+            drawRink();
+        }
+
+        function getMousePos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            return {
+                x: (e.clientX - rect.left) * scaleX,
+                y: (e.clientY - rect.top) * scaleY
+            };
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            if (isAnimating) return;
+            const mousePos = getMousePos(e);
+            const dist = Math.hypot(mousePos.x - launcher.restX, mousePos.y - launcher.restY);
+            if (dist < 25) {
+                isDragging = true;
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isDragging || isAnimating) return;
+            const mousePos = getMousePos(e);
+
+            let minX = launcher.x + 10;
+            const isForceLimit = document.getElementById('chk-force').checked;
+            
+            if (isForceLimit) {
+                const forceVal = parseFloat(document.getElementById('param-force').value);
+                const limitX = calcLimitXFromPower(forceVal);
+                minX = Math.max(minX, limitX);
+            }
+
+            dragX = Math.min(launcher.restX, Math.max(minX, mousePos.x));
+            
+            const isGuide = document.getElementById('chk-guide').checked;
+            const guideVal = isGuide ? parseFloat(document.getElementById('param-guide').value) : 50;
+            
+            const maxYSpread = (guideVal - 1) / 49 * 60; 
+            dragY = Math.min(launcher.restY + maxYSpread, Math.max(launcher.restY - maxYSpread, mousePos.y));
+
+            drawRink();
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                shootStone();
+            }
+        });
+
+        function getXFromDistance(m) {
+            const pxPerMeter = (RINK_END_X - launcher.restX) / MAX_DISTANCE_M;
+            return launcher.restX + (m * pxPerMeter);
+        }
+
+        function getDistanceFromX(x) {
+            const startX = launcher.restX;
+            const endX = RINK_END_X;
+            const pxWidth = endX - startX;
+            if (x < startX) return 0;
+            return (x - startX) * (MAX_DISTANCE_M / pxWidth);
+        }
+
+        function getActualDistance(x, y) {
+            const startX = launcher.restX;
+            const startY = launcher.restY;
+            const pxPerMeter = (RINK_END_X - startX) / MAX_DISTANCE_M;
+
+            const dxPx = x - startX;
+            const dyPx = (y - startY) * 2.2; 
+
+            const pixelDist = Math.hypot(dxPx, dyPx);
+
+            return pixelDist / pxPerMeter;
+        }
+
+        function drawRink() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = '#a5b4fc';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 目盛り線
+            ctx.strokeStyle = '#475569';
+            ctx.fillStyle = '#0f172a';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.lineWidth = 1;
+            
+            for (let m = 100; m <= MAX_DISTANCE_M; m += 100) {
+                const x = getXFromDistance(m);
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+                if (m % 200 === 0 || m === 100) {
+                    ctx.fillText(m, x - 12, 15);
+                }
+            }
+
+            // ハウス（目標円）：1700m
+            const houseX = getXFromDistance(1700);
+            const houseY = canvas.height / 2;
+            const pxPer100m = (RINK_END_X - launcher.restX) / (MAX_DISTANCE_M / 100);
+            const outerRadius = pxPer100m; 
+
+            ctx.beginPath();
+            ctx.arc(houseX, houseY, outerRadius, 0, Math.PI * 2);
+            ctx.fillStyle = '#ef4444';
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(houseX, houseY, outerRadius * 0.66, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(houseX, houseY, outerRadius * 0.33, 0, Math.PI * 2);
+            ctx.fillStyle = '#2563eb';
+            ctx.fill();
+
+            // 発射台
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(launcher.x, launcher.y, launcher.width, launcher.height, 15);
+            ctx.fill();
+            ctx.stroke();
+
+            // ガイドライン
+            const isGuide = document.getElementById('chk-guide').checked;
+            if (isGuide) {
+                const guideVal = parseFloat(document.getElementById('param-guide').value);
+                const spread = (guideVal - 1) / 49 * 60;
+                ctx.strokeStyle = '#2563eb';
+                ctx.lineWidth = 2;
+                
+                ctx.beginPath();
+                ctx.moveTo(launcher.x, launcher.restY - spread);
+                ctx.lineTo(launcher.x + launcher.width, launcher.restY - spread);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(launcher.x, launcher.restY + spread);
+                ctx.lineTo(launcher.x + launcher.width, launcher.restY + spread);
+                ctx.stroke();
+            }
+
+            // 作業標準 赤ライン
+            const isForceLimit = document.getElementById('chk-force').checked;
+            if (isForceLimit) {
+                const forceVal = parseFloat(document.getElementById('param-force').value);
+                const limitX = calcLimitXFromPower(forceVal);
+                ctx.strokeStyle = '#ef4444';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(limitX, launcher.y + 5);
+                ctx.lineTo(limitX, launcher.y + launcher.height - 5);
+                ctx.stroke();
+            }
+
+            // コイン
+            if (!isAnimating) {
+                if (isDragging) {
+                    ctx.strokeStyle = '#f59e0b';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(launcher.restX, launcher.restY);
+                    ctx.lineTo(dragX, dragY);
+                    ctx.stroke();
+                }
+
+                ctx.beginPath();
+                ctx.arc(dragX, dragY, launcher.stoneRadius, 0, Math.PI * 2);
+                ctx.fillStyle = '#334155';
+                ctx.fill();
+                ctx.strokeStyle = '#0f172a';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+
+            // 着地履歴
+            stoneHits.forEach(stone => {
+                if (stone.x <= canvas.width && stone.y >= 0 && stone.y <= canvas.height) {
+                    const distToHouse = Math.hypot(stone.x - houseX, stone.y - houseY);
+                    const isInsideHouse = distToHouse <= outerRadius;
+                    
+                    ctx.beginPath();
+                    ctx.arc(stone.x, stone.y, 8, 0, Math.PI * 2);
+                    ctx.fillStyle = isInsideHouse ? '#ef4444' : '#1e293b';
+                    ctx.fill();
+                    
+                    ctx.strokeStyle = '#0f172a';
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+                }
+            });
+        }
+
+        function shootStone() {
+            isAnimating = true;
+
+            const isGuide = document.getElementById('chk-guide').checked;
+            const isFriction = document.getElementById('chk-friction').checked;
+
+            const dx = launcher.restX - dragX; 
+            const dy = dragY - launcher.restY; 
+
+            const actualPower = calcPowerFromDx(dx);
+
+            const isZeroPull = (dx === 0 && dy === 0);
+            
+            let initialSpeed = dx * 0.04;
+            if (isZeroPull) initialSpeed = 0;
+
+            const angle = Math.atan2(-dy, dx); 
+
+            let posX = launcher.restX;
+            let posY = launcher.restY;
+            let vx = Math.cos(angle) * initialSpeed;
+            let vy = Math.sin(angle) * initialSpeed; 
+
+            const frictionCoefficient = isFriction ? parseFloat(document.getElementById('param-friction').value) : 0.0346; 
+
+            let isOutOfBounds = false;
+
+            function animate() {
+                posX += vx * 10; 
+                posY += vy * 10;
+
+                vx *= (1 - frictionCoefficient);
+                vy *= (1 - frictionCoefficient);
+
+                if (posY < 0 || posY > canvas.height) {
+                    isOutOfBounds = true;
+                }
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                drawRink();
+
+                ctx.beginPath();
+                ctx.arc(posX, posY, launcher.stoneRadius, 0, Math.PI * 2);
+                ctx.fillStyle = '#800000';
+                ctx.fill();
+
+                const currentSpeed = Math.hypot(vx, vy);
+
+                if (currentSpeed > 0.01 && posX < RINK_END_X && !isOutOfBounds) {
+                    requestAnimationFrame(animate);
+                } else {
+                    trialCount++;
+
+                    let distX = getDistanceFromX(posX);
+                    let distDiag = getActualDistance(posX, posY);
+
+                    let displayX = distX.toFixed(3);
+                    let displayDiag = distDiag.toFixed(3);
+
+                    if (distDiag > MAX_DISTANCE_M || isOutOfBounds) {
+                        displayX = 'NA';
+                        displayDiag = 'NA';
+                    } else {
+                        stoneHits.push({ x: posX, y: posY });
+                    }
+
+                    const record = {
+                        trial: trialCount,
+                        force: actualPower,
+                        guide: isGuide ? parseFloat(document.getElementById('param-guide').value) : '-',
+                        friction: frictionCoefficient.toFixed(4),
+                        distanceX: displayX,
+                        distanceDiag: displayDiag
+                    };
+                    historyData.push(record);
+
+                    const tbody = document.getElementById('data-table');
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${record.trial}</td>
+                        <td>${record.force}</td>
+                        <td>${record.guide}</td>
+                        <td>${record.friction}</td>
+                        <td><strong style="${displayX === 'NA' ? 'color:#ef4444;' : ''}">${record.distanceX}</strong></td>
+                        <td><strong style="${displayDiag === 'NA' ? 'color:#ef4444;' : ''}">${record.distanceDiag}</strong></td>
+                    `;
+                    tbody.insertBefore(tr, tbody.firstChild);
+
+                    dragX = launcher.restX;
+                    dragY = launcher.restY;
+                    isAnimating = false;
+                    drawRink();
+                }
+            }
+
+            animate();
+        }
+
+        function resetData() {
+            trialCount = 0;
+            historyData = [];
+            stoneHits = [];
+            dragX = launcher.restX;
+            dragY = launcher.restY;
+            document.getElementById('data-table').innerHTML = '';
+            drawRink();
+        }
+
+        function downloadCSV() {
+            if (historyData.length === 0) {
+                alert('データがありません。');
+                return;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+            csvContent += "試行,投球力(実測),ガイド幅,摩擦（抵抗）,到達距離(横),直線距離(斜め)\n";
+
+            historyData.forEach(row => {
+                csvContent += `${row.trial},${row.force},${row.guide},${row.friction},${row.distanceX},${row.distanceDiag}\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "coin_shooting_data.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // 修正: 初期化時に各パラメータの非アクティブ状態を反映させる
+        toggleParam('force');
+        toggleParam('guide');
+        drawRink();
+    </script>
+</body>
+</html>
