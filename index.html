@@ -25,7 +25,8 @@
         .btn-reset { background-color: #64748b; color: white; }
         .btn-reset:hover { background-color: #475569; }
         
-        .table-container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 380px; max-height: 250px; overflow-y: auto; }
+        /* 修正箇所: 2列増えたため幅を480pxに拡張 */
+        .table-container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 480px; max-height: 250px; overflow-y: auto; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: center; }
         th, td { padding: 6px 8px; border: 1px solid #cbd5e1; }
         th { background-color: #f1f5f9; font-weight: bold; position: sticky; top: 0; }
@@ -84,7 +85,9 @@
                             <th>試行</th>
                             <th>作業標準</th>
                             <th>ガイド幅</th>
-                            <th>飛んだ距離</th>
+                            <!-- 修正箇所: カラムを2つに分割 -->
+                            <th>到達距離(横)</th>
+                            <th>直線距離(斜め)</th>
                         </tr>
                     </thead>
                     <tbody id="data-table">
@@ -203,6 +206,15 @@
         function getXFromDistance(m) {
             const pxPerMeter = (RINK_END_X - launcher.restX) / MAX_DISTANCE_M;
             return launcher.restX + (m * pxPerMeter);
+        }
+
+        // 修正箇所: X軸（横方向）のみの到達距離(m)を計算する関数を追加
+        function getDistanceFromX(x) {
+            const startX = launcher.restX;
+            const endX = RINK_END_X;
+            const pxWidth = endX - startX;
+            if (x < startX) return 0;
+            return (x - startX) * (MAX_DISTANCE_M / pxWidth);
         }
 
         // 発射位置からの斜めの直線距離(m)を計算
@@ -401,12 +413,17 @@
                 } else {
                     trialCount++;
 
-                    let calculatedDistance = getActualDistance(posX, posY);
-                    let displayDistance = calculatedDistance.toFixed(3);
+                    // 修正箇所: 2通りの距離（横方向・斜め直線）を算出
+                    let distX = getDistanceFromX(posX);
+                    let distDiag = getActualDistance(posX, posY);
+
+                    let displayX = distX.toFixed(3);
+                    let displayDiag = distDiag.toFixed(3);
 
                     // 2300mオーバーまたは枠外飛び出しのみ「NA」
-                    if (calculatedDistance > MAX_DISTANCE_M || isOutOfBounds) {
-                        displayDistance = 'NA';
+                    if (distDiag > MAX_DISTANCE_M || isOutOfBounds) {
+                        displayX = 'NA';
+                        displayDiag = 'NA';
                     } else {
                         stoneHits.push({ x: posX, y: posY });
                     }
@@ -417,17 +434,20 @@
                         trial: trialCount,
                         force: isForce ? parseFloat(document.getElementById('param-force').value) : actualPower,
                         guide: isGuide ? parseFloat(document.getElementById('param-guide').value) : '-',
-                        distance: displayDistance
+                        distanceX: displayX,
+                        distanceDiag: displayDiag
                     };
                     historyData.push(record);
 
+                    // 修正箇所: テーブルへの出力内容を2列に変更
                     const tbody = document.getElementById('data-table');
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
                         <td>${record.trial}</td>
                         <td>${record.force}</td>
                         <td>${record.guide}</td>
-                        <td><strong style="${displayDistance === 'NA' ? 'color:#ef4444;' : ''}">${record.distance}</strong></td>
+                        <td><strong style="${displayX === 'NA' ? 'color:#ef4444;' : ''}">${record.distanceX}</strong></td>
+                        <td><strong style="${displayDiag === 'NA' ? 'color:#ef4444;' : ''}">${record.distanceDiag}</strong></td>
                     `;
                     tbody.insertBefore(tr, tbody.firstChild);
 
@@ -457,11 +477,12 @@
                 return;
             }
 
+            // 修正箇所: ヘッダーと行出力に「到達距離(横)」と「直線距離(斜め)」を両方含める
             let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-            csvContent += "試行,作業標準,ガイド幅,飛んだ距離\n";
+            csvContent += "試行,作業標準,ガイド幅,到達距離(横),直線距離(斜め)\n";
 
             historyData.forEach(row => {
-                csvContent += `${row.trial},${row.force},${row.guide},${row.distance}\n`;
+                csvContent += `${row.trial},${row.force},${row.guide},${row.distanceX},${row.distanceDiag}\n`;
             });
 
             const encodedUri = encodeURI(csvContent);
