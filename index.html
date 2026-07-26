@@ -345,7 +345,7 @@
             const isZeroPull = (dx === 0 && dy === 0);
             
             // 初速と減速（摩擦）のバランスを修正
-            let initialSpeed = Math.hypot(dx, dy) * 0.08; 
+            let initialSpeed = Math.hypot(dx, dy) * 0.04; 
             if (isZeroPull) initialSpeed = 0;
 
             const angle = Math.atan2(-dy, dx); 
