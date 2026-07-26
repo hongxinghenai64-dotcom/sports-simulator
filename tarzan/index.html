@@ -12,9 +12,16 @@
         .simulation-container { display: flex; flex-direction: column; gap: 15px; }
         canvas { background-color: #bae6fd; border: 2px solid #0284c7; border-radius: 8px; width: 100%; max-width: 1200px; height: 350px; display: block; cursor: pointer; }
         
-        .env-info { background: white; padding: 12px 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); display: flex; gap: 30px; font-weight: bold; font-size: 15px; align-items: center; }
+        .env-info { background: white; padding: 12px 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); display: flex; gap: 20px; font-weight: bold; font-size: 15px; align-items: center; flex-wrap: wrap; }
         .env-item { display: flex; align-items: center; gap: 8px; }
         .badge { background: #e0f2fe; color: #0369a1; padding: 4px 10px; border-radius: 4px; border: 1px solid #7dd3fc; }
+
+        /* モード切替・検証用UI */
+        .mode-section { background: #fef3c7; border: 2px solid #f59e0b; padding: 10px 15px; border-radius: 8px; display: flex; align-items: center; gap: 15px; font-size: 14px; }
+        .angle-input-group { display: flex; align-items: center; gap: 8px; }
+        .angle-input-group input[type="number"] { width: 80px; padding: 6px; font-size: 14px; border: 1px solid #cbd5e1; border-radius: 4px; text-align: right; }
+        .btn-launch { background-color: #d97706; color: white; padding: 6px 15px; font-size: 14px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-launch:hover { background-color: #b45309; }
 
         .bottom-area { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
         .btn-group { display: flex; gap: 10px; }
@@ -37,18 +44,29 @@
     <h1>🌴 ターザンロープシミュレーター（重回帰分析用）</h1>
     
     <div class="desc-box">
-        <strong>【遊び方】</strong><br>
-        1. 画面（キャンバス）をクリックすると振り子が揺れ始めます。<br>
-        2. タイミングよくクリックしてロープを離し、遠くまで飛びましょう！<br>
-        3. 試行ごとに「ロープの長さ」と「風速」がランダムに変化します。
+        <strong>【使い方】</strong><br>
+        1. <strong>通常モード:</strong> 画面クリックでスタートし、タイミングよくクリックしてジャンプ（データ収集用）。<br>
+        2. <strong>角度指定モード:</strong> 重回帰分析で導き出した計算式を使って、目標距離に飛ばす「手放し角度」を直接入力してジャンプ（成果検証用）。
     </div>
 
     <div class="simulation-container">
         <!-- 現在の環境条件を表示 -->
         <div class="env-info">
-            <div class="env-item">ロープ長 ($X_1$): <span id="disp-rope" class="badge">- m</span></div>
-            <div class="env-item">風速 ($X_2$): <span id="disp-wind" class="badge">- m/s</span></div>
-            <div class="env-item" style="color: #166534;">※クリックでスタート／ジャンプ！</div>
+            <div class="env-item">ロープ長 (X1): <span id="disp-rope" class="badge">- m</span></div>
+            <div class="env-item">風速 (X2): <span id="disp-wind" class="badge">- m/s</span></div>
+            
+            <div class="mode-section">
+                <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                    <input type="checkbox" id="chk-auto-mode" onchange="toggleMode()">
+                    🎯 角度を指定して飛ばす（検証モード）
+                </label>
+
+                <div id="input-container" class="angle-input-group" style="display: none;">
+                    手放し角度 (X3): 
+                    <input type="number" id="input-target-angle" placeholder="45.0" step="0.1" min="-90" max="90"> °
+                    <button class="btn-launch" onclick="launchWithAngle()">計算結果で発射！</button>
+                </div>
+            </div>
         </div>
 
         <canvas id="canvas" width="1200" height="350"></canvas>
@@ -64,10 +82,10 @@
                     <thead>
                         <tr>
                             <th>試行</th>
-                            <th>ロープ長($X_1$)</th>
-                            <th>風速($X_2$)</th>
-                            <th>離した角度($X_3$)</th>
-                            <th>到達距離($Y$)</th>
+                            <th>ロープ長(X1)</th>
+                            <th>風速(X2)</th>
+                            <th>離した角度(X3)</th>
+                            <th>到達距離(Y)</th>
                         </tr>
                     </thead>
                     <tbody id="data-table">
@@ -89,7 +107,7 @@
         const pivotY = 50;
         const groundY = 320;
         const SCALE = 12; // 1メートル = 12ピクセル
-        const DT = 0.05;   // タイムステップ
+        const DT = 0.05;
 
         // 試行ごとの環境変数
         let ropeLengthM = 10;
@@ -97,13 +115,17 @@
         
         // 振り子状態
         let gameState = 'IDLE'; 
-        let angle = Math.PI / 3; // 60度からスタート
+        let angle = Math.PI / 3;
         let angleVel = 0;
 
         // 飛行状態
         let posX = 0, posY = 0;
         let velX = 0, velY = 0;
         let releaseAngleDeg = 0;
+
+        // 自動指定発射フラグ
+        let isTargetAngleMode = false;
+        let targetAngleRad = 0;
 
         function initTrial() {
             gameState = 'IDLE';
@@ -119,43 +141,84 @@
             draw();
         }
 
+        function toggleMode() {
+            const chk = document.getElementById('chk-auto-mode');
+            const inputContainer = document.getElementById('input-container');
+            if (chk.checked) {
+                inputContainer.style.display = 'flex';
+            } else {
+                inputContainer.style.display = 'none';
+            }
+        }
+
         canvas.addEventListener('click', () => {
+            // 自動指定モードON時はクリックでの手動手放しを無効化
+            if (document.getElementById('chk-auto-mode').checked && gameState === 'SWINGING') {
+                return;
+            }
+
             if (gameState === 'IDLE') {
                 gameState = 'SWINGING';
             } else if (gameState === 'SWINGING') {
-                gameState = 'FLYING';
-                
-                // 離した瞬間の位置（メートル単位）
-                const relX = ropeLengthM * Math.sin(angle);
-                const relY = ropeLengthM * Math.cos(angle);
-                
-                posX = relX;
-                posY = relY;
-
-                // 速度（適正な飛び感になるよう倍率を調整）
-                const tangentialSpeed = ropeLengthM * angleVel * 1.8;
-                
-                velX = tangentialSpeed * Math.cos(angle);
-                velY = -tangentialSpeed * Math.sin(angle);
-
-                // 手放し角度（度数法）
-                releaseAngleDeg = (angle * (180 / Math.PI)).toFixed(1);
+                releaseRope();
             } else if (gameState === 'LANDED') {
                 initTrial();
             }
         });
 
+        function launchWithAngle() {
+            const inputVal = parseFloat(document.getElementById('input-target-angle').value);
+            if (isNaN(inputVal)) {
+                alert('角度を数値で入力してください。');
+                return;
+            }
+
+            if (gameState === 'LANDED') {
+                initTrial();
+            }
+
+            isTargetAngleMode = true;
+            // 度数法をラジアンに変換
+            targetAngleRad = inputVal * (Math.PI / 180);
+            gameState = 'SWINGING';
+        }
+
+        function releaseRope() {
+            gameState = 'FLYING';
+            
+            const relX = ropeLengthM * Math.sin(angle);
+            const relY = ropeLengthM * Math.cos(angle);
+            
+            posX = relX;
+            posY = relY;
+
+            const tangentialSpeed = ropeLengthM * angleVel * 1.8;
+            
+            velX = tangentialSpeed * Math.cos(angle);
+            velY = -tangentialSpeed * Math.sin(angle);
+
+            releaseAngleDeg = (angle * (180 / Math.PI)).toFixed(1);
+            isTargetAngleMode = false;
+        }
+
         function update() {
             if (gameState === 'SWINGING') {
-                // 振り子の単振子方程式（適度なスピード感：係数 0.02）
                 const g = 9.8;
                 let angleAccel = -(g / ropeLengthM) * Math.sin(angle);
                 
                 angleVel += angleAccel * 0.02;
                 angle += angleVel;
 
+                // 角度指定モード時：指定された角度を通過した瞬間に自動で手を離す
+                if (isTargetAngleMode) {
+                    // 振り子が右（プラス方向）へ振れていて目標角度を超えたタイミング
+                    if (angleVel > 0 && angle >= targetAngleRad) {
+                        angle = targetAngleRad; // ぴったり合わせる
+                        releaseRope();
+                    }
+                }
+
             } else if (gameState === 'FLYING') {
-                // 重力を少しマイルドにして滞空時間を確保 (3.5 m/s^2 相当の感覚)
                 const g = 3.5;
                 const windEffect = (windSpeed - velX) * 0.08;
                 
@@ -165,7 +228,6 @@
                 posX += velX * DT;
                 posY += velY * DT;
 
-                // 地面判定
                 const groundDistM = (groundY - pivotY) / SCALE;
                 if (posY >= groundDistM) {
                     posY = groundDistM;
@@ -188,7 +250,7 @@
             ctx.lineTo(canvas.width, groundY);
             ctx.stroke();
 
-            // 目盛り (10m刻み)
+            // 目盛り
             ctx.fillStyle = '#15803d';
             ctx.font = '11px sans-serif';
             for (let m = 0; m <= 80; m += 5) {
@@ -206,13 +268,12 @@
             ctx.fillStyle = '#334155';
             ctx.fillRect(pivotX - 10, pivotY - 10, 20, 10);
 
-            // 描画ピクセル座標の計算
+            // 描画座標計算
             let drawPx, drawPy;
             if (gameState === 'SWINGING' || gameState === 'IDLE') {
                 drawPx = pivotX + (ropeLengthM * Math.sin(angle)) * SCALE;
                 drawPy = pivotY + (ropeLengthM * Math.cos(angle)) * SCALE;
 
-                // ロープ
                 ctx.strokeStyle = '#78350f';
                 ctx.lineWidth = 3;
                 ctx.beginPath();
@@ -224,7 +285,7 @@
                 drawPy = pivotY + posY * SCALE;
             }
 
-            // ターザン本体
+            // ターザン
             ctx.beginPath();
             ctx.arc(drawPx, drawPy, 10, 0, Math.PI * 2);
             ctx.fillStyle = '#ea580c';
@@ -236,14 +297,18 @@
             // UIテキスト
             ctx.fillStyle = '#0f172a';
             ctx.font = 'bold 15px sans-serif';
+            const isAuto = document.getElementById('chk-auto-mode').checked;
+
             if (gameState === 'IDLE') {
-                ctx.fillText('クリックで揺れ始めます', pivotX + 30, pivotY + 40);
+                ctx.fillText(isAuto ? '角度を入力して「計算結果で発射！」を押してください' : 'クリックで揺れ始めます', pivotX + 30, pivotY + 40);
             } else if (gameState === 'SWINGING') {
-                ctx.fillText('クリックで手を離す！', drawPx + 15, drawPy);
+                if (!isAuto) {
+                    ctx.fillText('クリックで手を離す！', drawPx + 15, drawPy);
+                }
             } else if (gameState === 'LANDED') {
                 const distanceM = Math.max(0, posX).toFixed(2);
                 ctx.fillStyle = '#dc2626';
-                ctx.fillText(`到達距離: ${distanceM} m (クリックで次へ)`, drawPx - 60, drawPy - 20);
+                ctx.fillText(`到達距離: ${distanceM} m (画面クリックで次へ)`, drawPx - 60, drawPy - 20);
             }
         }
 
