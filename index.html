@@ -12,7 +12,7 @@
         .top-controls { background: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 20px; align-items: center; }
         .control-item { display: flex; align-items: center; gap: 10px; }
         .control-item label { font-weight: bold; font-size: 14px; cursor: pointer; }
-        .val-box { width: 60px; text-align: center; border: 1px solid #ccc; border-radius: 4px; padding: 4px; font-weight: bold; background: #f8fafc; font-size: 14px; }
+        .val-box { width: 60px; text-align: center; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; background: #f8fafc; font-size: 14px; }
         
         .simulation-container { display: flex; flex-direction: column; gap: 15px; }
         canvas { background-color: #a5b4fc; border: 2px solid #6366f1; border-radius: 8px; width: 100%; max-width: 1200px; height: 260px; display: block; cursor: crosshair; }
@@ -49,7 +49,7 @@
         <div class="control-item">
             <input type="checkbox" id="chk-force" checked onchange="toggleParam('force')">
             <label for="chk-force">作業標準 (投球力制限)</label>
-            <!-- 下限を80から40へ拡張 -->
+            <!-- 制限下限を 40 まで拡大 -->
             <input type="range" id="param-force" min="40" max="160" value="120" oninput="updateVal('force')">
             <span id="val-force" class="val-box">120</span>
         </div>
@@ -110,7 +110,7 @@
             width: 130,
             height: 160,
             stoneRadius: 10,
-            restX: 130, // 発射口のX座標
+            restX: 130,
             restY: 130
         };
 
@@ -125,14 +125,10 @@
         let dragY = launcher.restY;
         let isAnimating = false;
 
-        // Xの引っ張りピクセル量 (dx) から統一した投球力 Power を算出
-        // dx=0で0、dx=100px( launcher.restX - (launcher.x+10) = 130 - 30 ) で160になるよう調整
-        // 1pxあたり 1.6
         function calcPowerFromDx(dx) {
             return Math.round(dx * 1.6);
         }
 
-        // 投球力 Power から引っ張り限界の X座標を算出
         function calcLimitXFromPower(power) {
             const dx = power / 1.6;
             return launcher.restX - dx;
@@ -157,7 +153,6 @@
             drawRink();
         }
 
-        // マウス位置取得（レスポンシブ対応）
         function getMousePos(e) {
             const rect = canvas.getBoundingClientRect();
             const scaleX = canvas.width / rect.width;
@@ -171,7 +166,6 @@
         canvas.addEventListener('mousedown', (e) => {
             if (isAnimating) return;
             const mousePos = getMousePos(e);
-            // ストーン周辺をクリックしたか判定
             const dist = Math.hypot(mousePos.x - launcher.restX, mousePos.y - launcher.restY);
             if (dist < 25) {
                 isDragging = true;
@@ -182,8 +176,7 @@
             if (!isDragging || isAnimating) return;
             const mousePos = getMousePos(e);
 
-            // X方向の引っ張り制限
-            let minX = launcher.x + 10; // 発射台の左端+余裕
+            let minX = launcher.x + 10;
             const isForceLimit = document.getElementById('chk-force').checked;
             
             if (isForceLimit) {
@@ -194,7 +187,6 @@
 
             dragX = Math.min(launcher.restX, Math.max(minX, mousePos.x));
             
-            // Y方向（上下）の引っ張り制限
             const isGuide = document.getElementById('chk-guide').checked;
             const guideVal = isGuide ? parseFloat(document.getElementById('param-guide').value) : 50;
             const maxYSpread = (guideVal / 50) * 60; 
@@ -210,12 +202,10 @@
             }
         });
 
-        // 距離(m)からCanvasのX座標へ変換
         function getXFromDistance(m) {
             return RINK_START_X + (m - 100) * (RINK_WIDTH_PX / (MAX_DISTANCE_M - 100));
         }
 
-        // CanvasのX座標から距離(m)へ変換
         function getDistanceFromX(x) {
             return 100 + (x - RINK_START_X) * ((MAX_DISTANCE_M - 100) / RINK_WIDTH_PX);
         }
@@ -223,7 +213,6 @@
         function drawRink() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // 背景（リンク）
             ctx.fillStyle = '#a5b4fc';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -239,39 +228,32 @@
                 ctx.moveTo(x, 0);
                 ctx.lineTo(x, canvas.height);
                 ctx.stroke();
-                // 偶数100mのみ数字を表示して見やすく
                 if (m % 200 === 0 || m === 100) {
                     ctx.fillText(m, x - 12, 15);
                 }
             }
 
-            // ハウス（目標円）の描画（【変更】中心を1700mへ移動）
+            // ハウス（目標円）：中心を 1700m に設定
             const houseX = getXFromDistance(1700);
             const houseY = canvas.height / 2;
-
-            // 直径約200m分（1600m〜1800mの幅）の円
             const outerRadius = (100 * (RINK_WIDTH_PX / (MAX_DISTANCE_M - 100))); 
 
-            // 綺麗な正円にするための補正（Canvas比率合わせ）
-            ctx.save();
-            // 楕円描画を防ぐため、サークル描画時のみスケールを1:1へ
             ctx.beginPath();
             ctx.arc(houseX, houseY, outerRadius, 0, Math.PI * 2);
-            ctx.fillStyle = '#ef4444'; // 赤（外）
+            ctx.fillStyle = '#ef4444';
             ctx.fill();
 
             ctx.beginPath();
             ctx.arc(houseX, houseY, outerRadius * 0.66, 0, Math.PI * 2);
-            ctx.fillStyle = '#ffffff'; // 白（中）
+            ctx.fillStyle = '#ffffff';
             ctx.fill();
 
             ctx.beginPath();
             ctx.arc(houseX, houseY, outerRadius * 0.33, 0, Math.PI * 2);
-            ctx.fillStyle = '#2563eb'; // 青（内）
+            ctx.fillStyle = '#2563eb';
             ctx.fill();
-            ctx.restore();
 
-            // 発射台（白い四角）
+            // 発射台
             ctx.fillStyle = '#ffffff';
             ctx.strokeStyle = '#475569';
             ctx.lineWidth = 2;
@@ -280,7 +262,7 @@
             ctx.fill();
             ctx.stroke();
 
-            // 平行なガイドライン（青線）
+            // ガイドライン
             const isGuide = document.getElementById('chk-guide').checked;
             if (isGuide) {
                 const guideVal = parseFloat(document.getElementById('param-guide').value);
@@ -288,36 +270,33 @@
                 ctx.strokeStyle = '#2563eb';
                 ctx.lineWidth = 2;
                 
-                // 上の平行線
                 ctx.beginPath();
                 ctx.moveTo(launcher.x, launcher.restY - spread);
                 ctx.lineTo(launcher.x + launcher.width, launcher.restY - spread);
                 ctx.stroke();
 
-                // 下の平行線
                 ctx.beginPath();
                 ctx.moveTo(launcher.x, launcher.restY + spread);
                 ctx.lineTo(launcher.x + launcher.width, launcher.restY + spread);
                 ctx.stroke();
             }
 
-            // 作業標準（赤い限界ライン）
+            // 作業標準 赤ライン
             const isForceLimit = document.getElementById('chk-force').checked;
             if (isForceLimit) {
                 const forceVal = parseFloat(document.getElementById('param-force').value);
                 const limitX = calcLimitXFromPower(forceVal);
                 ctx.strokeStyle = '#ef4444';
-                ctx.lineWidth = 3; // 少し太く
+                ctx.lineWidth = 3;
                 ctx.beginPath();
                 ctx.moveTo(limitX, launcher.y + 5);
                 ctx.lineTo(limitX, launcher.y + launcher.height - 5);
                 ctx.stroke();
             }
 
-            // 待機 / 引っ張り中のコイン
+            // コイン
             if (!isAnimating) {
                 if (isDragging) {
-                    // ゴム紐の表現
                     ctx.strokeStyle = '#f59e0b';
                     ctx.lineWidth = 3;
                     ctx.beginPath();
@@ -328,25 +307,25 @@
 
                 ctx.beginPath();
                 ctx.arc(dragX, dragY, launcher.stoneRadius, 0, Math.PI * 2);
-                ctx.fillStyle = '#334155'; // グレー
+                ctx.fillStyle = '#334155';
                 ctx.fill();
                 ctx.strokeStyle = '#0f172a';
                 ctx.lineWidth = 2;
                 ctx.stroke();
             }
 
-            // 過去の着地位置（データがある場合）
+            // 着地履歴
             stoneHits.forEach(stone => {
                 if (stone.x <= canvas.width && stone.y >= 0 && stone.y <= canvas.height) {
                     ctx.beginPath();
                     ctx.arc(stone.x, stone.y, 8, 0, Math.PI * 2);
-                    ctx.fillStyle = '#800000'; // 暗い赤
+                    ctx.fillStyle = '#800000';
                     ctx.fill();
                 }
             });
         }
 
-        // 投球（ショット）物理アニメーション
+        // 投球物理計算（120で2200m付近へ着地）
         function shootStone() {
             isAnimating = true;
 
@@ -354,93 +333,125 @@
             const isGuide = document.getElementById('chk-guide').checked;
             const isTemp = document.getElementById('chk-temp').checked;
 
-            // 引っ張ったベクトル（原点からの相対距離）
-            const dx = launcher.restX - dragX; // X引き量
-            const dy = dragY - launcher.restY; // Y引き量（下へ引くと正）
+            const dx = launcher.restX - dragX; 
+            const dy = dragY - launcher.restY; 
 
             const isZeroPull = (dx === 0 && dy === 0);
             
-            // 【重要：物理調整】初速係数を調整（120で2200m付近へ届くように）
+            // 初速計算を調整 (120の引っ張りで2200m〜2250mに到達)
             let initialSpeed = Math.hypot(dx, dy) * 0.165; 
             if (isZeroPull) initialSpeed = 0;
 
-            // パチンコ挙動：引いた方向の真逆に飛ばす
             const angle = Math.atan2(-dy, dx); 
 
-            // アニメーション用変数
             let posX = launcher.restX;
             let posY = launcher.restY;
             let vx = Math.cos(angle) * initialSpeed;
             let vy = Math.sin(angle) * initialSpeed; 
 
             const temp = isTemp ? parseFloat(document.getElementById('param-temp').value) : 2.0;
-            // 気温による摩擦変化（標準2.0度で 0.0078。高いと滑る、低いと止まる）
             const frictionCoefficient = 0.008 - (temp * 0.0001); 
 
             let isOutOfBounds = false;
 
             function animate() {
-                // 移動更新（アニメーション速度向上のため3.5倍速）
                 posX += vx * 3.5; 
                 posY += vy * 3.5;
 
-                // 摩擦による減速
                 vx *= (1 - frictionCoefficient);
                 vy *= (1 - frictionCoefficient);
 
-                // 上下壁への飛び出し判定
                 if (posY < 0 || posY > canvas.height) {
                     isOutOfBounds = true;
                 }
 
-                // 再描画
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 drawRink();
 
-                // 飛んでいるコインを描画
                 ctx.beginPath();
                 ctx.arc(posX, posY, launcher.stoneRadius, 0, Math.PI * 2);
-                ctx.fillStyle = '#800000'; // 飛翔中は色を変える
+                ctx.fillStyle = '#800000';
                 ctx.fill();
 
                 const currentSpeed = Math.hypot(vx, vy);
 
-                // 停止判定（速度が一定以下、または画面外、または壁衝突）
-                // 【調整】停止しきい値を上げてダラダラ減速を防ぐ
                 if (currentSpeed > 0.18 && posX < canvas.width + 50 && !isOutOfBounds) {
                     requestAnimationFrame(animate);
                 } else {
-                    // アニメーション終了（停止）処理
                     trialCount++;
 
-                    // ピクセル座標を距離(m)へ換算
                     let calculatedDistance = getDistanceFromX(posX);
-
                     let displayDistance = calculatedDistance.toFixed(3);
-                    // 2300m超え、または発射口より後ろ、または上下画面外は欠損値
+
                     if (calculatedDistance > MAX_DISTANCE_M || posX < launcher.restX || isOutOfBounds) {
                         displayDistance = 'NA';
                     } else {
-                        // 有効データなら着地点を記録
                         stoneHits.push({ x: posX, y: posY });
                     }
 
-                    // 内部データ用の実際の投球力Power
                     const actualPower = calcPowerFromDx(dx);
 
-                    // 履歴データ保持
                     const record = {
                         trial: trialCount,
-                        // 制限ONなら設定値、OFFなら実際の引っ張り力を記録
                         force: isForce ? parseFloat(document.getElementById('param-force').value) : actualPower,
                         guide: isGuide ? parseFloat(document.getElementById('param-guide').value) : '-',
                         distance: displayDistance
                     };
                     historyData.push(record);
 
-                    // 下部テーブルへ追加
                     const tbody = document.getElementById('data-table');
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
                         <td>${record.trial}</td>
-                        <td>${record.force}
+                        <td>${record.force}</td>
+                        <td>${record.guide}</td>
+                        <td><strong style="${displayDistance === 'NA' ? 'color:#ef4444;' : ''}">${record.distance}</strong></td>
+                    `;
+                    tbody.insertBefore(tr, tbody.firstChild);
+
+                    dragX = launcher.restX;
+                    dragY = launcher.restY;
+                    isAnimating = false;
+                    drawRink();
+                }
+            }
+
+            animate();
+        }
+
+        function resetData() {
+            trialCount = 0;
+            historyData = [];
+            stoneHits = [];
+            dragX = launcher.restX;
+            dragY = launcher.restY;
+            document.getElementById('data-table').innerHTML = '';
+            drawRink();
+        }
+
+        function downloadCSV() {
+            if (historyData.length === 0) {
+                alert('データがありません。');
+                return;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+            csvContent += "試行,作業標準,ガイド幅,飛んだ距離\n";
+
+            historyData.forEach(row => {
+                csvContent += `${row.trial},${row.force},${row.guide},${row.distance}\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "coin_shooting_data.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        drawRink();
+    </script>
+</body>
+</html>
