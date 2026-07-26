@@ -63,7 +63,7 @@
 
                 <div id="input-container" class="angle-input-group" style="display: none;">
                     手放し角度 (X3): 
-                    <input type="number" id="input-target-angle" placeholder="30.0" step="0.1" min="-60" max="60"> °
+                    <input type="number" id="input-target-angle" placeholder="30.0" step="0.1" min="-70" max="70"> °
                     <button class="btn-launch" onclick="launchWithAngle()">計算結果で発射！</button>
                 </div>
             </div>
@@ -113,9 +113,10 @@
         let ropeLengthM = 10;
         let windSpeed = 0;
         
-        // 振り子状態
+        // 振り子状態（折り返し地点を75°に設定）
+        const INITIAL_ANGLE_RAD = 75 * (Math.PI / 180);
         let gameState = 'IDLE'; 
-        let angle = Math.PI / 3;
+        let angle = INITIAL_ANGLE_RAD;
         let angleVel = 0;
 
         // 飛行状態
@@ -135,7 +136,7 @@
             document.getElementById('disp-rope').innerText = `${ropeLengthM} m`;
             document.getElementById('disp-wind').innerText = `${windSpeed > 0 ? '+' : ''}${windSpeed} m/s`;
 
-            angle = Math.PI / 3; 
+            angle = INITIAL_ANGLE_RAD; 
             angleVel = 0;
 
             draw();
@@ -172,6 +173,11 @@
                 return;
             }
 
+            if (inputVal < -70 || inputVal > 70) {
+                alert('手放し角度は -70° から 70° の範囲で指定してください。');
+                return;
+            }
+
             if (gameState === 'LANDED') {
                 initTrial();
             }
@@ -189,7 +195,6 @@
             posY = ropeLengthM * Math.cos(angle);
 
             // 接線方向の速度成分（慣性）
-            // スピード感を出すため接線速度に十分な数値を乗算
             const speed = angleVel * ropeLengthM * 18.0;
             
             // 角度に応じた分解（接線ベクトル: vx = speed * cos(θ), vy = -speed * sin(θ)）
