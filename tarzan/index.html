@@ -63,7 +63,7 @@
 
                 <div id="input-container" class="angle-input-group" style="display: none;">
                     手放し角度 (X3): 
-                    <input type="number" id="input-target-angle" placeholder="45.0" step="0.1" min="-90" max="90"> °
+                    <input type="number" id="input-target-angle" placeholder="30.0" step="0.1" min="-60" max="60"> °
                     <button class="btn-launch" onclick="launchWithAngle()">計算結果で発射！</button>
                 </div>
             </div>
@@ -152,7 +152,6 @@
         }
 
         canvas.addEventListener('click', () => {
-            // 自動指定モードON時はクリックでの手動手放しを無効化
             if (document.getElementById('chk-auto-mode').checked && gameState === 'SWINGING') {
                 return;
             }
@@ -178,7 +177,6 @@
             }
 
             isTargetAngleMode = true;
-            // 度数法をラジアンに変換
             targetAngleRad = inputVal * (Math.PI / 180);
             gameState = 'SWINGING';
         }
@@ -186,16 +184,17 @@
         function releaseRope() {
             gameState = 'FLYING';
             
-            const relX = ropeLengthM * Math.sin(angle);
-            const relY = ropeLengthM * Math.cos(angle);
-            
-            posX = relX;
-            posY = relY;
+            // 離した瞬間の位置（メートル単位）
+            posX = ropeLengthM * Math.sin(angle);
+            posY = ropeLengthM * Math.cos(angle);
 
-            const tangentialSpeed = ropeLengthM * angleVel * 1.8;
+            // 接線方向の速度成分（慣性）
+            // スピード感を出すため接線速度に十分な数値を乗算
+            const speed = angleVel * ropeLengthM * 18.0;
             
-            velX = tangentialSpeed * Math.cos(angle);
-            velY = -tangentialSpeed * Math.sin(angle);
+            // 角度に応じた分解（接線ベクトル: vx = speed * cos(θ), vy = -speed * sin(θ)）
+            velX = speed * Math.cos(angle);
+            velY = -speed * Math.sin(angle);
 
             releaseAngleDeg = (angle * (180 / Math.PI)).toFixed(1);
             isTargetAngleMode = false;
@@ -206,21 +205,24 @@
                 const g = 9.8;
                 let angleAccel = -(g / ropeLengthM) * Math.sin(angle);
                 
-                angleVel += angleAccel * 0.02;
+                // 振り子の自然な揺れスピード
+                angleVel += angleAccel * 0.015;
                 angle += angleVel;
 
-                // 角度指定モード時：指定された角度を通過した瞬間に自動で手を離す
+                // 角度指定モード：目標角度に達した瞬間自動手放し
                 if (isTargetAngleMode) {
-                    // 振り子が右（プラス方向）へ振れていて目標角度を超えたタイミング
                     if (angleVel > 0 && angle >= targetAngleRad) {
-                        angle = targetAngleRad; // ぴったり合わせる
+                        angle = targetAngleRad;
                         releaseRope();
                     }
                 }
 
             } else if (gameState === 'FLYING') {
-                const g = 3.5;
-                const windEffect = (windSpeed - velX) * 0.08;
+                // 重力（自然な滞空時間の確保）
+                const g = 4.5;
+                
+                // 風による影響
+                const windEffect = (windSpeed * 0.15);
                 
                 velX += windEffect * DT;
                 velY += g * DT;
@@ -228,6 +230,7 @@
                 posX += velX * DT;
                 posY += velY * DT;
 
+                // 地面判定
                 const groundDistM = (groundY - pivotY) / SCALE;
                 if (posY >= groundDistM) {
                     posY = groundDistM;
