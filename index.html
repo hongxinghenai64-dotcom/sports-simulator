@@ -319,17 +319,26 @@
                 ctx.lineWidth = 2;
                 ctx.stroke();
             }
-
             // 着地履歴
             stoneHits.forEach(stone => {
                 if (stone.x <= canvas.width && stone.y >= 0 && stone.y <= canvas.height) {
+                    // ハウス（目標円）の中心からの距離を計算
+                    const distToHouse = Math.hypot(stone.x - houseX, stone.y - houseY);
+                    
+                    // 円の中なら赤（#ef4444）、外なら黒（#1e293b）
+                    const isInsideHouse = distToHouse <= outerRadius;
+                    
                     ctx.beginPath();
                     ctx.arc(stone.x, stone.y, 8, 0, Math.PI * 2);
-                    ctx.fillStyle = '#800000';
+                    ctx.fillStyle = isInsideHouse ? '#ef4444' : '#1e293b';
                     ctx.fill();
+                    
+                    // 見やすさのために黒いフチ取りも追加
+                    ctx.strokeStyle = '#0f172a';
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
                 }
             });
-        }
 
         // 投球物理計算（適正減速版）
         function shootStone() {
