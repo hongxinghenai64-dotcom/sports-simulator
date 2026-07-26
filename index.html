@@ -205,14 +205,17 @@
             return launcher.restX + (m * pxPerMeter);
         }
 
-        // 画面座標(px)から距離(m)を計算
-        function getDistanceFromX(x) {
+        // 発射位置からの斜めの直線距離(m)を計算
+        function getActualDistance(x, y) {
             const startX = launcher.restX;
-            const endX = RINK_END_X;
-            const pxWidth = endX - startX;
-            
-            if (x < startX) return 0;
-            return (x - startX) * (MAX_DISTANCE_M / pxWidth);
+            const startY = launcher.restY;
+            const pxPerMeter = (RINK_END_X - startX) / MAX_DISTANCE_M;
+
+            // XとYの移動量から実際の移動距離(px)を計算
+            const pixelDist = Math.hypot(x - startX, y - startY);
+
+            // メートルに変換
+            return pixelDist / pxPerMeter;
         }
 
         function drawRink() {
@@ -398,7 +401,7 @@
                 } else {
                     trialCount++;
 
-                    let calculatedDistance = getDistanceFromX(posX);
+                    let calculatedDistance = getActualDistance(posX, posY);
                     let displayDistance = calculatedDistance.toFixed(3);
 
                     // 2300mオーバーまたは枠外飛び出しのみ「NA」
