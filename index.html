@@ -41,7 +41,7 @@
     <div class="desc-box">
         <strong>【遊び方】</strong><br>
         発射台内のコインを<strong>マウスで手前に引っ張って放す</strong>と発射します！<br>
-        下に引いて放すと上方向に飛んでいきます。1400mを超えたり枠外へ飛び出た場合は「NA（測定不能）」になります。
+        下に引いて放すと上方向に飛んでいきます。2300mを超えたり枠外へ飛び出た場合は「NA（測定不能）」になります。
     </div>
 
     <!-- 上部設定パネル -->
@@ -63,7 +63,6 @@
         <div class="control-item">
             <input type="checkbox" id="chk-temp" onchange="toggleParam('temp')">
             <label for="chk-temp">気温 (°C)</label>
-            <!-- -10〜35度まで拡張 -->
             <input type="range" id="param-temp" min="-10" max="35" step="0.5" value="2.0" oninput="updateVal('temp')" class="disabled-input">
             <span id="val-temp" class="val-box disabled-input">2.0</span>
         </div>
@@ -114,10 +113,28 @@
             restY: 130
         };
 
+        // スケール定義（100m〜2300m）
+        const MAX_DISTANCE_M = 2300;
+        const RINK_START_X = 180;
+        const RINK_END_X = 1180;
+        const RINK_WIDTH_PX = RINK_END_X - RINK_START_X; // 1000px
+
         let isDragging = false;
         let dragX = launcher.restX;
         let dragY = launcher.restY;
         let isAnimating = false;
+
+        // Xの引っ張りピクセル量 (dx) から統一した投球力 Power を算出する関数
+        function calcPowerFromDx(dx) {
+            // dx = 0 のとき 0、dx = 100px (最大引き) のとき 171.1 (作業標準スケールと1:1対応)
+            return Math.round(dx * 1.711);
+        }
+
+        // 投球力 Power から引っ張り限界の X座標を算出する関数
+        function calcLimitXFromPower(power) {
+            const dx = power / 1.711;
+            return launcher.restX - dx;
+        }
 
         function updateVal(param) {
             document.getElementById(`val-${param}`).innerText = document.getElementById(`param-${param}`).value;
@@ -161,7 +178,7 @@
             
             if (isForceLimit) {
                 const forceVal = parseFloat(document.getElementById('param-force').value);
-                const limitX = launcher.restX - ((forceVal - 60) * 0.9);
+                const limitX = calcLimitXFromPower(forceVal);
                 minX = Math.max(minX, limitX);
             }
 
@@ -182,6 +199,14 @@
             }
         });
 
+        function getXFromDistance(m) {
+            return RINK_START_X + (m - 100) * (RINK_WIDTH_PX / (MAX_DISTANCE_M - 100));
+        }
+
+        function getDistanceFromX(x) {
+            return 100 + (x - RINK_START_X) * ((MAX_DISTANCE_M - 100) / RINK_WIDTH_PX);
+        }
+
         function drawRink() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
@@ -189,13 +214,13 @@
             ctx.fillStyle = '#a5b4fc';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 目盛り線（100m〜1400m）
+            // 目盛り線（100m〜2300m、200m刻み）
             ctx.strokeStyle = '#475569';
             ctx.fillStyle = '#0f172a';
             ctx.font = 'bold 11px sans-serif';
             
-            for (let m = 100; m <= 1400; m += 100) {
-                const x = 180 + (m - 100) * (970 / 1300);
+            for (let m = 100; m <= MAX_DISTANCE_M; m += 200) {
+                const x = getXFromDistance(m);
                 ctx.beginPath();
                 ctx.moveTo(x, 0);
                 ctx.lineTo(x, canvas.height);
@@ -203,12 +228,12 @@
                 ctx.fillText(m, x - 12, 15);
             }
 
-            // ハウス（目標円）の描画（中心：1100m位置、1000m〜1200mに跨る大サイズ）
-            const houseX = 180 + (1100 - 100) * (970 / 1300);
+            // ハウス（目標円）の描画（中心：1100m位置）
+            const houseX = getXFromDistance(1100);
             const houseY = canvas.height / 2;
 
-            // 1000m〜1200mの幅（約75pxの半径）
-            const outerRadius = (100 * (970 / 1300)); 
+            // 直径約200m分（1000m〜1200mの幅）の円
+            const outerRadius = (100 * (RINK_WIDTH_PX / (MAX_DISTANCE_M - 100))); 
 
             ctx.beginPath();
             ctx.arc(houseX, houseY, outerRadius, 0, Math.PI * 2);
@@ -259,7 +284,7 @@
             const isForceLimit = document.getElementById('chk-force').checked;
             if (isForceLimit) {
                 const forceVal = parseFloat(document.getElementById('param-force').value);
-                const limitX = launcher.restX - ((forceVal - 60) * 0.9);
+                const limitX = calcLimitXFromPower(forceVal);
                 ctx.strokeStyle = '#ef4444';
                 ctx.lineWidth = 2;
                 ctx.beginPath();
@@ -287,12 +312,7 @@
                 ctx.lineWidth = 2;
                 ctx.stroke();
 
-                if (isDragging) {
-                    const pullPower = Math.round((launcher.restX - dragX) * 7.5 + 400);
-                    ctx.fillStyle = '#1e293b';
-                    ctx.font = 'bold 12px sans-serif';
-                    ctx.fillText(`Power: ${pullPower}`, dragX - 25, dragY - 15);
-                }
+                // 【修正】引いている最中の Power 表示テキストを非表示化（カンニング防止）
             }
 
             // 過去の着地位置
@@ -323,7 +343,6 @@
             let speed = Math.hypot(dx, dy) * 0.085; 
             if (isZeroPull) speed = 0;
 
-            // パチンコ挙動：下に引っ張る(dy > 0)と、放した時は上(vy < 0)へ飛ばす
             const angle = Math.atan2(-dy, dx); 
 
             let posX = launcher.restX;
@@ -359,26 +378,26 @@
 
                 const currentSpeed = Math.hypot(vx, vy);
 
-                // 【修正】しきい値を上げてピタッと着地（ノロノロ減速をカット）
                 if (currentSpeed > 0.18 && posX < canvas.width + 50 && !isOutOfBounds) {
                     requestAnimationFrame(animate);
                 } else {
                     trialCount++;
 
-                    let calculatedDistance = 100 + (posX - 180) * (1300 / 970);
+                    let calculatedDistance = getDistanceFromX(posX);
 
                     let displayDistance = calculatedDistance.toFixed(3);
-                    if (calculatedDistance > 1400 || posX < 180 || isOutOfBounds) {
+                    if (calculatedDistance > MAX_DISTANCE_M || posX < RINK_START_X || isOutOfBounds) {
                         displayDistance = 'NA';
                     } else {
                         stoneHits.push({ x: posX, y: posY });
                     }
 
-                    const pulledPower = Math.round(dx * 7.5 + 400);
+                    // 【修正】作業標準と完全に一致する投球力 Power の算出
+                    const actualPower = calcPowerFromDx(dx);
 
                     const record = {
                         trial: trialCount,
-                        force: isForce ? parseFloat(document.getElementById('param-force').value) : pulledPower,
+                        force: isForce ? parseFloat(document.getElementById('param-force').value) : actualPower,
                         guide: isGuide ? parseFloat(document.getElementById('param-guide').value) : '-',
                         distance: displayDistance
                     };
