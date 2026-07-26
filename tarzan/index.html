@@ -38,7 +38,7 @@
     
     <div class="desc-box">
         <strong>【遊び方】</strong><br>
-        1. 画面（キャンバス）をクリックすると振り子が揺れ始めます。<br>
+        1. 画面（キャンバス）をクリックすると振り子がゆっくり揺れ始めます。<br>
         2. もう一度タイミングよくクリックしてロープを離し、遠くまで飛びましょう！<br>
         3. 試行ごとに「ロープの長さ」と「風速」がランダムに変化します。
     </div>
@@ -91,11 +91,11 @@
         const g = 9.8;
 
         // 試行ごとの環境変数
-        let ropeLengthM = 10; // 8〜14mでランダム
-        let windSpeed = 0;    // -5〜+5m/sでランダム (プラスが追い風)
+        let ropeLengthM = 10;
+        let windSpeed = 0;
         
         // 振り子状態
-        let gameState = 'IDLE'; // IDLE, SWINGING, FLYING, LANDED
+        let gameState = 'IDLE'; 
         let angle = Math.PI / 3;
         let angleVel = 0;
         let currentRopePx = 150;
@@ -115,7 +115,7 @@
 
             angle = Math.PI / 3.2; 
             angleVel = 0;
-            currentRopePx = ropeLengthM * 15; // スケール換算
+            currentRopePx = ropeLengthM * 15;
 
             draw();
         }
@@ -126,15 +126,14 @@
             } else if (gameState === 'SWINGING') {
                 gameState = 'FLYING';
                 
-                // 離した瞬間の位置と速度
                 px = pivotX + currentRopePx * Math.sin(angle);
                 py = pivotY + currentRopePx * Math.cos(angle);
 
-                const speed = angleVel * currentRopePx;
+                // 速度計算（適切な飛距離が出るようスケール調整）
+                const speed = angleVel * currentRopePx * 2.5; 
                 vx = speed * Math.cos(angle);
                 vy = -speed * Math.sin(angle);
 
-                // 手放し角度（度数法）
                 releaseAngleDeg = (angle * (180 / Math.PI)).toFixed(1);
             } else if (gameState === 'LANDED') {
                 initTrial();
@@ -143,13 +142,14 @@
 
         function update() {
             if (gameState === 'SWINGING') {
-                let angleAccel = -(g / ropeLengthM) * Math.sin(angle) * 0.03;
+                // 揺れる速度を抑えるため係数を 0.03 から 0.008 に減速
+                let angleAccel = -(g / ropeLengthM) * Math.sin(angle) * 0.008;
                 angleVel += angleAccel;
                 angle += angleVel;
 
             } else if (gameState === 'FLYING') {
-                vx += (windSpeed * 0.05); // 風による加速度
-                vy += 0.4; // 重力加速度
+                vx += (windSpeed * 0.02); // 風の影響
+                vy += 0.25;               // 重力
 
                 px += vx;
                 py += vy;
@@ -176,7 +176,7 @@
             ctx.lineTo(canvas.width, groundY);
             ctx.stroke();
 
-            // 目盛り (10m刻み)
+            // 目盛り
             ctx.fillStyle = '#15803d';
             ctx.font = '11px sans-serif';
             for (let m = 0; m <= 60; m += 5) {
@@ -194,13 +194,12 @@
             ctx.fillStyle = '#334155';
             ctx.fillRect(pivotX - 10, pivotY - 10, 20, 10);
 
-            // プレイヤー位置計算
+            // プレイヤー位置
             let playerX, playerY;
             if (gameState === 'SWINGING' || gameState === 'IDLE') {
                 playerX = pivotX + currentRopePx * Math.sin(angle);
                 playerY = pivotY + currentRopePx * Math.cos(angle);
 
-                // ロープ
                 ctx.strokeStyle = '#78350f';
                 ctx.lineWidth = 3;
                 ctx.beginPath();
@@ -212,7 +211,7 @@
                 playerY = py;
             }
 
-            // ターザン（プレイヤー）
+            // ターザン
             ctx.beginPath();
             ctx.arc(playerX, playerY, 12, 0, Math.PI * 2);
             ctx.fillStyle = '#ea580c';
@@ -221,7 +220,7 @@
             ctx.lineWidth = 2;
             ctx.stroke();
 
-            // テキストメッセージ
+            // メッセージ
             ctx.fillStyle = '#0f172a';
             ctx.font = 'bold 16px sans-serif';
             if (gameState === 'IDLE') {
