@@ -101,7 +101,7 @@
         let trialCount = 0;
         let historyData = [];
 
-        // 物理・スケール定数
+        // 物理・スケール定数（変更なし）
         const pivotX = 100;
         const pivotY = 50;
         const groundY = 320;
@@ -113,7 +113,7 @@
         
         // 島の位置情報 (メートル単位)
         let islandStartM = 120;
-        let islandWidthM = 10; // ★ 幅を10mに変更
+        let islandWidthM = 10;
 
         const INITIAL_ANGLE_RAD = 75 * (Math.PI / 180);
         let gameState = 'IDLE'; 
@@ -138,7 +138,7 @@
 
             // 島を 100m 〜 150m の間のどこかに配置
             islandStartM = Math.floor(Math.random() * 51) + 100; 
-            islandWidthM = 10; // ★ 幅 10m
+            islandWidthM = 10;
 
             document.getElementById('disp-rope').innerText = `${ropeLengthM} m`;
             document.getElementById('disp-wind').innerText = `${windSpeed > 0 ? '+' : ''}${windSpeed} m/s`;
@@ -416,26 +416,30 @@
             initTrial();
         }
 
+        // ★ CSV出力処理のみ文字化け対策版に差し替え
         function downloadCSV() {
             if (historyData.length === 0) {
                 alert('データがありません。');
                 return;
             }
 
-            let csvContent = "data:text/csv;charset=utf-8,\\uFEFF";
-            csvContent += "試行,ロープ長(X1),風速(X2),手放し角度(X3),到達距離(Y)\\n";
+            let csvContent = "\uFEFF";
+            csvContent += "試行,ロープ長(X1),風速(X2),手放し角度(X3),到達距離(Y)\n";
 
             historyData.forEach(row => {
-                csvContent += `${row.trial},${row.rope},${row.wind},${row.angle},${row.distance}\\n`;
+                csvContent += `${row.trial},${row.rope},${row.wind},${row.angle},${row.distance}\n`;
             });
 
-            const encodedUri = encodeURI(csvContent);
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            
             const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
+            link.setAttribute("href", url);
             link.setAttribute("download", "tarzan_rope_data.csv");
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+            URL.revokeObjectURL(url);
         }
 
         initTrial();
