@@ -70,7 +70,7 @@
         <!-- 摩擦力ランダム化チェックボックス -->
         <div class="control-item" style="border-left: 2px solid #cbd5e1; padding-left: 15px;">
             <input type="checkbox" id="chk-random-friction">
-            <label for="chk-random-friction" style="color: #d97706;">🎲 摩擦力をランダム化 (0.0300〜0.0400)</label>
+            <label for="chk-random-friction" style="color: #d97706;">🎲 摩擦力をランダム化</label>
         </div>
     </div>
 
@@ -395,7 +395,7 @@
                 frictionCoefficient = parseFloat(document.getElementById('param-friction').value);
             } else {
                 // デフォルト（手動チェックOFF時）: 0.0340 ～ 0.0350 の微細なブレを付与
-                frictionCoefficient = 0.0340 + Math.random() * 0.0010;
+                frictionCoefficient = 0.0320 + Math.random() * 0.0020;
             }
 
             let isOutOfBounds = false;
