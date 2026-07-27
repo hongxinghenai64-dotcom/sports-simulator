@@ -90,7 +90,7 @@
                             <th>試行</th>
                             <th>投球力(実測)</th>
                             <th>ガイド幅</th>
-                            <th>摩擦（抵抗）</th>
+                            <!-- <th>摩擦（抵抗）</th> -->
                             <th>到達距離(横)</th>
                             <th>直線距離(斜め)</th>
                         </tr>
@@ -385,7 +385,7 @@
             let frictionCoefficient;
             if (isRandomFriction) {
                 // 大きなランダムチェックONの場合: 0.0300 ～ 0.0400 の間でランダム生成
-                frictionCoefficient = 0.0300 + Math.random() * 0.0100;
+                frictionCoefficient = 0.0200 + Math.random() * 0.0300;
                 
                 // 画面UIの摩擦スライダーと数値表示も更新
                 document.getElementById('param-friction').value = frictionCoefficient.toFixed(4);
@@ -456,7 +456,6 @@
                         <td>${record.trial}</td>
                         <td>${record.force}</td>
                         <td>${record.guide}</td>
-                        <td>${record.friction}</td>
                         <td><strong style="${displayX === 'NA' ? 'color:#ef4444;' : ''}">${record.distanceX}</strong></td>
                         <td><strong style="${displayDiag === 'NA' ? 'color:#ef4444;' : ''}">${record.distanceDiag}</strong></td>
                     `;
