@@ -47,7 +47,6 @@
     <!-- 上部設定パネル -->
     <div class="top-controls">
         <div class="control-item">
-            <!-- 修正: 作業標準もデフォルトでチェックを外し、初期状態要素を無効化 -->
             <input type="checkbox" id="chk-force" onchange="toggleParam('force')">
             <label for="chk-force">作業標準 (投球力制限)</label>
             <input type="range" id="param-force" min="40" max="160" value="120" oninput="updateVal('force')" class="disabled-input">
@@ -66,6 +65,12 @@
             <label for="chk-friction">摩擦（抵抗）</label>
             <input type="range" id="param-friction" min="0.0100" max="0.0600" step="0.0005" value="0.0346" oninput="updateVal('friction')" class="disabled-input">
             <span id="val-friction" class="val-box disabled-input">0.0346</span>
+        </div>
+
+        <!-- 追加：摩擦力ランダム化チェックボックス -->
+        <div class="control-item" style="border-left: 2px solid #cbd5e1; padding-left: 15px;">
+            <input type="checkbox" id="chk-random-friction">
+            <label for="chk-random-friction" style="color: #d97706;">🎲 摩擦力をランダム化 (0.0300〜0.0400)</label>
         </div>
     </div>
 
@@ -357,6 +362,7 @@
 
             const isGuide = document.getElementById('chk-guide').checked;
             const isFriction = document.getElementById('chk-friction').checked;
+            const isRandomFriction = document.getElementById('chk-random-friction').checked;
 
             const dx = launcher.restX - dragX; 
             const dy = dragY - launcher.restY; 
@@ -375,7 +381,22 @@
             let vx = Math.cos(angle) * initialSpeed;
             let vy = Math.sin(angle) * initialSpeed; 
 
-            const frictionCoefficient = isFriction ? parseFloat(document.getElementById('param-friction').value) : 0.0346; 
+            // --- 摩擦力の決定処理（変更箇所） ---
+            let frictionCoefficient;
+            if (isRandomFriction) {
+                // ランダムチェックONの場合: 0.0300 ～ 0.0400 の間でランダム生成
+                frictionCoefficient = 0.0300 + Math.random() * 0.0100;
+                
+                // 画面UIの摩擦スライダーと数値表示も更新
+                document.getElementById('param-friction').value = frictionCoefficient.toFixed(4);
+                document.getElementById('val-friction').innerText = frictionCoefficient.toFixed(4);
+            } else if (isFriction) {
+                // 通常の手動スライダー指定値
+                frictionCoefficient = parseFloat(document.getElementById('param-friction').value);
+            } else {
+                // チェックなし初期値
+                frictionCoefficient = 0.0346;
+            }
 
             let isOutOfBounds = false;
 
@@ -482,7 +503,6 @@
             document.body.removeChild(link);
         }
 
-        // 修正: 初期化時に各パラメータの非アクティブ状態を反映させる
         toggleParam('force');
         toggleParam('guide');
         drawRink();
