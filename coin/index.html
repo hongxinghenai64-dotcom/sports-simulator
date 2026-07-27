@@ -67,10 +67,10 @@
             <span id="val-friction" class="val-box disabled-input">0.0346</span>
         </div>
 
-        <!-- 追加：摩擦力ランダム化チェックボックス -->
+        <!-- 摩擦力ランダム化チェックボックス -->
         <div class="control-item" style="border-left: 2px solid #cbd5e1; padding-left: 15px;">
             <input type="checkbox" id="chk-random-friction">
-            <label for="chk-random-friction" style="color: #d97706;">🎲 摩擦力</label>
+            <label for="chk-random-friction" style="color: #d97706;">🎲 摩擦力をランダム化 (0.0300〜0.0400)</label>
         </div>
     </div>
 
@@ -381,21 +381,21 @@
             let vx = Math.cos(angle) * initialSpeed;
             let vy = Math.sin(angle) * initialSpeed; 
 
-            // --- 摩擦力の決定処理（変更箇所） ---
+            // --- 摩擦力の決定処理 ---
             let frictionCoefficient;
             if (isRandomFriction) {
-                // ランダムチェックONの場合: 0.0300 ～ 0.0400 の間でランダム生成
+                // 大きなランダムチェックONの場合: 0.0300 ～ 0.0400 の間でランダム生成
                 frictionCoefficient = 0.0300 + Math.random() * 0.0100;
                 
                 // 画面UIの摩擦スライダーと数値表示も更新
                 document.getElementById('param-friction').value = frictionCoefficient.toFixed(4);
                 document.getElementById('val-friction').innerText = frictionCoefficient.toFixed(4);
             } else if (isFriction) {
-                // 通常の手動スライダー指定値
+                // 手動指定チェックONの場合: スライダー指定値
                 frictionCoefficient = parseFloat(document.getElementById('param-friction').value);
             } else {
-                // チェックなし初期値
-                frictionCoefficient = 0.0346;
+                // デフォルト（手動チェックOFF時）: 0.0340 ～ 0.0350 の微細なブレを付与
+                frictionCoefficient = 0.0340 + Math.random() * 0.0010;
             }
 
             let isOutOfBounds = false;
@@ -445,7 +445,8 @@
                         guide: isGuide ? parseFloat(document.getElementById('param-guide').value) : '-',
                         friction: frictionCoefficient.toFixed(4),
                         distanceX: displayX,
-                        distanceDiag: displayDiag
+                        distanceDiag: displayDiag,
+                        isRandomFrictionOn: isRandomFriction // CSV判定用に記録
                     };
                     historyData.push(record);
 
@@ -488,11 +489,22 @@
             }
 
             let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-            csvContent += "試行,投球力(実測),ガイド幅,摩擦（抵抗）,到達距離(横),直線距離(斜め)\n";
+            
+            // 大きな摩擦ランダム（🎲）がONのデータが含まれるか判定してヘッダー列を変更
+            const includeFriction = historyData.some(r => r.isRandomFrictionOn);
 
-            historyData.forEach(row => {
-                csvContent += `${row.trial},${row.force},${row.guide},${row.friction},${row.distanceX},${row.distanceDiag}\n`;
-            });
+            if (includeFriction) {
+                csvContent += "試行,投球力(実測),ガイド幅,摩擦（抵抗）,到達距離(横),直線距離(斜め)\n";
+                historyData.forEach(row => {
+                    csvContent += `${row.trial},${row.force},${row.guide},${row.friction},${row.distanceX},${row.distanceDiag}\n`;
+                });
+            } else {
+                // 通常時は摩擦（抵抗）を除外
+                csvContent += "試行,投球力(実測),ガイド幅,到達距離(横),直線距離(斜め)\n";
+                historyData.forEach(row => {
+                    csvContent += `${row.trial},${row.force},${row.guide},${row.distanceX},${row.distanceDiag}\n`;
+                });
+            }
 
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
