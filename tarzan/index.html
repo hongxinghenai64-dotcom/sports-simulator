@@ -113,7 +113,7 @@
         
         // 島の位置情報 (メートル単位)
         let islandStartM = 120;
-        let islandWidthM = 10;
+        let islandWidthM = 16;
 
         const INITIAL_ANGLE_RAD = 75 * (Math.PI / 180);
         let gameState = 'IDLE'; 
@@ -138,7 +138,7 @@
 
             // 島を 100m 〜 150m の間のどこかに配置
             islandStartM = Math.floor(Math.random() * 51) + 100; 
-            islandWidthM = 10;
+            islandWidthM = 16;
 
             document.getElementById('disp-rope').innerText = `${ropeLengthM} m`;
             document.getElementById('disp-wind').innerText = `${windSpeed > 0 ? '+' : ''}${windSpeed} m/s`;
