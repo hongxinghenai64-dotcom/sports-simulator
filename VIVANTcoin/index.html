@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>コイン射撃シミュレーター</title>
+    <title>コイン射撃シミュレーター（EDA強化版）</title>
     <style>
         * { box-sizing: border-box; }
         body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f0f4f8; margin: 0; padding: 20px; color: #333; }
@@ -25,10 +25,10 @@
         .btn-reset { background-color: #64748b; color: white; }
         .btn-reset:hover { background-color: #475569; }
         
-        .table-container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 100%; max-width: 1000px; max-height: 250px; overflow-y: auto; }
-        table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: center; }
-        th, td { padding: 6px 6px; border: 1px solid #cbd5e1; }
-        th { background-color: #f1f5f9; font-weight: bold; position: sticky; top: 0; }
+        .table-container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 100%; max-width: 1200px; max-height: 280px; overflow-y: auto; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 11px; text-align: center; white-space: nowrap; }
+        th, td { padding: 6px 8px; border: 1px solid #cbd5e1; }
+        th { background-color: #f1f5f9; font-weight: bold; position: sticky; top: 0; z-index: 10; }
         
         .desc-box { background: #eff6ff; border-left: 4px solid #2563eb; padding: 10px 15px; border-radius: 4px; font-size: 13px; margin-bottom: 15px; }
         .disabled-input { opacity: 0.3; pointer-events: none; }
@@ -36,12 +36,13 @@
 </head>
 <body>
 
-    <h1>🥌 コイン射撃シミュレーター（探究学習版）</h1>
+    <h1>🥌 コイン射撃シミュレーター（EDA探究学習版）</h1>
     
     <div class="desc-box">
         <strong>【遊び方】</strong><br>
         チェックボックスが外れている項目は、試行ごとに<strong>ランダムな値</strong>で変動します。<br>
-        室温が高いと滑りやすく、コインが重いと摩擦が大きくなります。目標は1700mmのハウス中心です！
+        室温やコインの状態によって滑りやすさが変化します。目標は1700mmのハウス中心です！<br>
+        ※全18項目のデータが蓄積され、CSV出力して相関分析や可視化（EDA）を行えます。
     </div>
 
     <!-- 設定パネル -->
@@ -87,7 +88,7 @@
         
         <div class="bottom-area">
             <div class="btn-group">
-                <button class="btn-csv" onclick="downloadCSV()">CSV出力(全14カラム)</button>
+                <button class="btn-csv" onclick="downloadCSV()">CSV出力(全18カラム)</button>
                 <button class="btn-reset" onclick="resetData()">はじめから</button>
             </div>
 
@@ -96,11 +97,16 @@
                     <thead>
                         <tr>
                             <th>試行ID</th>
+                            <th>操作者</th>
+                            <th>コイン銘柄</th>
+                            <th>コインの状態</th>
                             <th>引き量(mm)</th>
                             <th>引き量制限(mm)</th>
                             <th>ガイド幅(cm)</th>
                             <th>角度(°)</th>
+                            <th>騒音レベル(dB)</th>
                             <th>室温(℃)</th>
+                            <th>湿度(%)</th>
                             <th>天気</th>
                             <th>重さ(g)</th>
                             <th>摩擦係数</th>
@@ -135,7 +141,10 @@
         let dragY = launcher.restY;
         let isAnimating = false;
 
-        const weatherList = ['☀️ 晴れ', '☁️ 曇り', '🌧 雨', '❄️ 雪'];
+        const weatherList = ['晴れ', '曇り', '雨', '雪'];
+        const playerList = ['初心者', '中級者', '上級者'];
+        const coinTypeList = ['10円玉', '100円玉', '500円玉'];
+        const coinConditionList = ['ピカピカ（新硬貨）', 'やや汚れ', '黒ずみ（古硬貨）'];
 
         function calcPowerFromDx(dx) { return Math.round(dx * 1.6); }
         function calcLimitXFromPower(power) { return launcher.restX - (power / 1.6); }
@@ -292,28 +301,57 @@
             const isGuide = document.getElementById('chk-guide').checked;
             const isForceLimit = document.getElementById('chk-force').checked;
 
-            // ランダム天気の選定
+            // --- EDA用：データの生成 ---
+            const currentPlayer = playerList[Math.floor(Math.random() * playerList.length)];
+            const currentCoin = coinTypeList[Math.floor(Math.random() * coinTypeList.length)];
+            const currentCondition = coinConditionList[Math.floor(Math.random() * coinConditionList.length)];
+
+            // 騒音レベル (40dB〜80dB)
+            const noise = Math.floor(Math.random() * 41) + 40;
+
+            // 天気の生成 (絵文字無し)
             const currentWeather = weatherList[Math.floor(Math.random() * weatherList.length)];
 
-            // チェックが無ければランダム生成（記録用）
+            // 湿度（%）：天気に連動
+            let humidity = 50;
+            if (currentWeather === '雨') humidity = Math.floor(Math.random() * 16) + 75; // 75〜90%
+            else if (currentWeather === '雪') humidity = Math.floor(Math.random() * 21) + 60; // 60〜80%
+            else if (currentWeather === '晴れ') humidity = Math.floor(Math.random() * 21) + 30; // 30〜50%
+            else humidity = Math.floor(Math.random() * 21) + 45; // 45〜65% (曇り)
+
+            // 重さ（g）：コイン銘柄に連動
+            let weight = 15;
+            if (document.getElementById('chk-weight').checked) {
+                weight = parseFloat(document.getElementById('param-weight').value);
+            } else {
+                if (currentCoin === '10円玉') weight = 4.5;
+                else if (currentCoin === '100円玉') weight = 4.8;
+                else if (currentCoin === '500円玉') weight = 7.0;
+            }
+
+            // 室温（℃）
             const temp = document.getElementById('chk-temp').checked 
                 ? parseFloat(document.getElementById('param-temp').value)
                 : Math.floor(Math.random() * 11) + 10; // 10〜20℃
 
-            const weight = document.getElementById('chk-weight').checked 
-                ? parseFloat(document.getElementById('param-weight').value)
-                : Math.floor(Math.random() * 11) + 10; // 10〜20g
+            // 摩擦係数：コインの状態（ピカピカ/やや汚れ/黒ずみ）にも影響を受ける設定
+            let conditionFrictionAdd = 0;
+            if (currentCondition === 'やや汚れ') conditionFrictionAdd = 0.005;
+            if (currentCondition === '黒ずみ（古硬貨）') conditionFrictionAdd = 0.012;
 
-            // 摩擦係数：固定値指定があればそれを優先、無ければ室温と重さから計算
             let baseFriction = document.getElementById('chk-fric').checked
                 ? parseFloat(document.getElementById('param-fric').value)
-                : 0.045 - (temp * 0.001) + (weight * 0.0005);
+                : 0.045 - (temp * 0.001) + (weight * 0.0005) + conditionFrictionAdd;
             
             baseFriction = Math.max(0.005, baseFriction);
 
             const dx = launcher.restX - dragX;
-            const dy = dragY - launcher.restY;
+            let dy = dragY - launcher.restY;
             const actualPower = calcPowerFromDx(dx);
+
+            // 騒音レベルが高いほど微小な揺らぎ（角度のノイズ）が発生
+            const noiseEffect = (noise - 40) / 40 * (Math.random() - 0.5) * 4; // -2 〜 +2 pxのばらつき
+            dy += noiseEffect;
 
             const angleRad = Math.atan2(-dy, dx);
             const angleDeg = parseFloat((angleRad * (180 / Math.PI)).toFixed(2));
@@ -325,7 +363,7 @@
             let vy = Math.sin(angleRad) * initialSpeed;
 
             let isOutOfBounds = false;
-            let frameCount = 0; // 移動時間の計算用フレームカウンター
+            let frameCount = 0;
 
             function animate() {
                 frameCount++;
@@ -354,14 +392,12 @@
                     let displayDiag = distDiag.toFixed(3);
                     let diffDist = (distDiag - distX).toFixed(3);
 
-                    // 移動時間を現実的な秒数表現に変換（フレーム数×定数で計算）
                     let moveTimeSeconds = (frameCount * 0.045).toFixed(2);
 
                     const houseX = getXFromDistance(1700);
                     const houseY = canvas.height / 2;
                     const pxPer100mm = (RINK_END_X - launcher.restX) / (MAX_DISTANCE_MM / 100);
                     
-                    // 成功判定（"成功" または "失敗"）
                     const isSuccess = (Math.hypot(posX - houseX, posY - houseY) <= pxPer100mm) ? '成功' : '失敗';
 
                     if (distDiag > MAX_DISTANCE_MM || isOutOfBounds) {
@@ -372,11 +408,16 @@
 
                     const record = {
                         trial: trialCount,
+                        player: currentPlayer,
+                        coinType: currentCoin,
+                        coinCondition: currentCondition,
                         force: actualPower,
                         forceLimit: isForceLimit ? parseFloat(document.getElementById('param-force').value) : "-",
                         guide: isGuide ? parseFloat(document.getElementById('param-guide').value) : 50,
                         angle: angleDeg,
+                        noise: noise,
                         temp: temp,
+                        humidity: humidity,
                         weather: currentWeather,
                         weight: weight,
                         friction: baseFriction.toFixed(4),
@@ -388,16 +429,21 @@
                     };
                     historyData.push(record);
 
-                    // テーブル更新（画面表示とCSVの項目・順番を統一）
+                    // テーブル更新
                     const tbody = document.getElementById('data-table');
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
                         <td>${record.trial}</td>
+                        <td>${record.player}</td>
+                        <td>${record.coinType}</td>
+                        <td>${record.coinCondition}</td>
                         <td>${record.force}</td>
                         <td>${record.forceLimit}</td>
                         <td>${record.guide}</td>
                         <td>${record.angle}</td>
+                        <td>${record.noise}</td>
                         <td>${record.temp}</td>
+                        <td>${record.humidity}%</td>
                         <td>${record.weather}</td>
                         <td>${record.weight}</td>
                         <td>${record.friction}</td>
@@ -427,15 +473,15 @@
         function downloadCSV() {
             if (historyData.length === 0) return alert('データがありません。');
             let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-            csvContent += "試行ID,引き量(mm),引き量制限(mm),ガイド幅(cm),角度(°),室温(℃),天気,コイン重さ(g),摩擦係数,移動時間(秒),到達距離_横(mm),直線距離_斜め(mm),横ズレ(mm),ハウスイン判定\n";
+            csvContent += "試行ID,操作者,コイン銘柄,コインの状態,引き量(mm),引き量制限(mm),ガイド幅(cm),角度(°),騒音レベル(dB),室温(℃),湿度(%),天気,コイン重さ(g),摩擦係数,移動時間(秒),到達距離_横(mm),直線距離_斜め(mm),横ズレ(mm),ハウスイン判定\n";
 
             historyData.forEach(r => {
-                csvContent += `${r.trial},${r.force},${r.forceLimit},${r.guide},${r.angle},${r.temp},${r.weather},${r.weight},${r.friction},${r.moveTime},${r.distanceX},${r.distanceDiag},${r.diffDist},${r.houseIn}\n`;
+                csvContent += `${r.trial},${r.player},${r.coinType},${r.coinCondition},${r.force},${r.forceLimit},${r.guide},${r.angle},${r.noise},${r.temp},${r.humidity},${r.weather},${r.weight},${r.friction},${r.moveTime},${r.distanceX},${r.distanceDiag},${r.diffDist},${r.houseIn}\n`;
             });
 
             const link = document.createElement("a");
             link.setAttribute("href", encodeURI(csvContent));
-            link.setAttribute("download", "coin_shooting_inquiry_data.csv");
+            link.setAttribute("download", "coin_shooting_eda_data.csv");
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
