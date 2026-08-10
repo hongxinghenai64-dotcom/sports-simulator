@@ -303,7 +303,6 @@
             const dy = dragY - launcher.restY;
             const actualPower = calcPowerFromDx(dx);
 
-            // 元コードと全く同じ物理計算式
             let baseFriction = 0.045 - (temp * 0.001) + (weight * 0.0005);
             baseFriction = Math.max(0.005, baseFriction);
 
@@ -316,16 +315,17 @@
             let vx = Math.cos(angleRad) * initialSpeed;
             let vy = Math.sin(angleRad) * initialSpeed;
 
-            const slopeAccelX = tilt * 0.0008; 
+            // 坂道の影響度を小さく設定 (0.0008 -> 0.0002)
+            const slopeAccelX = tilt * 0.0002; 
             let isOutOfBounds = false;
 
             function animate() {
-                // 1回の描画フレーム内で5ステップ分物理計算を進める（計算精度は元のまま高速化）
-                const STEPS_PER_FRAME = 5;
+                // 1画面描画フレームあたり3回分物理処理を進める
+                const STEPS_PER_FRAME = 3;
                 let isStopped = false;
 
                 for (let i = 0; i < STEPS_PER_FRAME; i++) {
-                    posX += vx * 10; // 元の移動倍率（10）を維持
+                    posX += vx * 10;
                     posY += vy * 10;
 
                     vx += slopeAccelX;
@@ -338,7 +338,6 @@
                         break;
                     }
 
-                    // 停止判定（元コードと同じ条件）
                     if (Math.hypot(vx, vy) <= 0.01 || posX >= RINK_END_X) {
                         isStopped = true;
                         break;
