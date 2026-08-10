@@ -9,10 +9,10 @@
         body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f0f4f8; margin: 0; padding: 20px; color: #333; }
         h1 { font-size: 24px; margin-bottom: 10px; color: #1e3a8a; }
         
-        .top-controls { background: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 20px; align-items: center; }
-        .control-item { display: flex; align-items: center; gap: 10px; }
-        .control-item label { font-weight: bold; font-size: 14px; cursor: pointer; }
-        .val-box { width: 70px; text-align: center; border: 1px solid #ccc; border-radius: 4px; padding: 4px; font-weight: bold; background: #f8fafc; font-size: 14px; }
+        .top-controls { background: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 15px 20px; align-items: center; }
+        .control-item { display: flex; align-items: center; gap: 8px; }
+        .control-item label { font-weight: bold; font-size: 13px; cursor: pointer; }
+        .val-box { width: 65px; text-align: center; border: 1px solid #ccc; border-radius: 4px; padding: 3px; font-weight: bold; background: #f8fafc; font-size: 13px; }
         
         .simulation-container { display: flex; flex-direction: column; gap: 15px; }
         canvas { background-color: #a5b4fc; border: 2px solid #6366f1; border-radius: 8px; width: 100%; max-width: 1200px; height: 260px; display: block; cursor: crosshair; }
@@ -25,9 +25,9 @@
         .btn-reset { background-color: #64748b; color: white; }
         .btn-reset:hover { background-color: #475569; }
         
-        .table-container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 560px; max-height: 250px; overflow-y: auto; }
-        table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: center; }
-        th, td { padding: 6px 8px; border: 1px solid #cbd5e1; }
+        .table-container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 720px; max-height: 250px; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: center; }
+        th, td { padding: 6px 6px; border: 1px solid #cbd5e1; }
         th { background-color: #f1f5f9; font-weight: bold; position: sticky; top: 0; }
         
         .desc-box { background: #eff6ff; border-left: 4px solid #2563eb; padding: 10px 15px; border-radius: 4px; font-size: 13px; margin-bottom: 15px; }
@@ -36,19 +36,19 @@
 </head>
 <body>
 
-    <h1>🥌 コイン射撃シミュレーター</h1>
+    <h1>🥌 コイン射撃シミュレーター（探究学習版）</h1>
     
     <div class="desc-box">
         <strong>【遊び方】</strong><br>
-        発射台内のコインをマウスで手前に引っ張って放すと発射します！<br>
-        2300mを超えたり枠外へ飛び出した場合は「NA（測定不能）」になります。目標は1700mのハウス中心です。10回連続でハウスの中に入れてみよう！
+        チェックボックスが外れている項目は、試行ごとに<strong>ランダムな値</strong>で変動します。<br>
+        室温が高いと滑りやすく、コインが重いと摩擦が大きくなります。目標は1700mのハウス中心です！
     </div>
 
-    <!-- 上部設定パネル -->
+    <!-- 設定パネル -->
     <div class="top-controls">
         <div class="control-item">
             <input type="checkbox" id="chk-force" onchange="toggleParam('force')">
-            <label for="chk-force">作業標準 (投球力制限)</label>
+            <label for="chk-force">投球力制限</label>
             <input type="range" id="param-force" min="40" max="160" value="120" oninput="updateVal('force')" class="disabled-input">
             <span id="val-force" class="val-box disabled-input">120</span>
         </div>
@@ -61,16 +61,17 @@
         </div>
 
         <div class="control-item">
-            <input type="checkbox" id="chk-friction" onchange="toggleParam('friction')">
-            <label for="chk-friction">摩擦（抵抗）</label>
-            <input type="range" id="param-friction" min="0.0100" max="0.0600" step="0.0005" value="0.0346" oninput="updateVal('friction')" class="disabled-input">
-            <span id="val-friction" class="val-box disabled-input">0.0346</span>
+            <input type="checkbox" id="chk-temp" onchange="toggleParam('temp')">
+            <label for="chk-temp">🌡 室温(℃)</label>
+            <input type="range" id="param-temp" min="0" max="30" value="15" step="1" oninput="updateVal('temp')" class="disabled-input">
+            <span id="val-temp" class="val-box disabled-input">15℃</span>
         </div>
 
-        <!-- 摩擦力ランダム化チェックボックス -->
-        <div class="control-item" style="border-left: 2px solid #cbd5e1; padding-left: 15px;">
-            <input type="checkbox" id="chk-random-friction">
-            <label for="chk-random-friction" style="color: #d97706;">🎲 摩擦力</label>
+        <div class="control-item">
+            <input type="checkbox" id="chk-weight" onchange="toggleParam('weight')">
+            <label for="chk-weight">⚖ 重さ(g)</label>
+            <input type="range" id="param-weight" min="5" max="30" value="15" step="1" oninput="updateVal('weight')" class="disabled-input">
+            <span id="val-weight" class="val-box disabled-input">15g</span>
         </div>
     </div>
 
@@ -79,7 +80,7 @@
         
         <div class="bottom-area">
             <div class="btn-group">
-                <button class="btn-csv" onclick="downloadCSV()">CSV出力</button>
+                <button class="btn-csv" onclick="downloadCSV()">CSV出力(全14カラム)</button>
                 <button class="btn-reset" onclick="resetData()">はじめから</button>
             </div>
 
@@ -88,10 +89,14 @@
                     <thead>
                         <tr>
                             <th>試行</th>
-                            <th>投球力(実測)</th>
-                            <th>ガイド幅</th>
-                            <th>到達距離(横)</th>
-                            <th>直線距離(斜め)</th>
+                            <th>投球力</th>
+                            <th>ガイド</th>
+                            <th>角度(°)</th>
+                            <th>室温</th>
+                            <th>重さ</th>
+                            <th>到達(横)</th>
+                            <th>直線(斜め)</th>
+                            <th>成功</th>
                         </tr>
                     </thead>
                     <tbody id="data-table">
@@ -109,37 +114,24 @@
         let historyData = [];
         let stoneHits = [];
 
-        // 発射台設定
-        const launcher = {
-            x: 20,
-            y: 50,
-            width: 130,
-            height: 160,
-            stoneRadius: 10,
-            restX: 130,
-            restY: 130
-        };
-
-        // スケール定義（0m〜2300m）
+        const launcher = { x: 20, y: 50, width: 130, height: 160, stoneRadius: 10, restX: 130, restY: 130 };
         const MAX_DISTANCE_M = 2300;
-        const RINK_END_X = 1180; // 2300mの位置
+        const RINK_END_X = 1180;
 
         let isDragging = false;
         let dragX = launcher.restX;
         let dragY = launcher.restY;
         let isAnimating = false;
 
-        function calcPowerFromDx(dx) {
-            return Math.round(dx * 1.6);
-        }
-
-        function calcLimitXFromPower(power) {
-            const dx = power / 1.6;
-            return launcher.restX - dx;
-        }
+        function calcPowerFromDx(dx) { return Math.round(dx * 1.6); }
+        function calcLimitXFromPower(power) { return launcher.restX - (power / 1.6); }
 
         function updateVal(param) {
-            document.getElementById(`val-${param}`).innerText = document.getElementById(`param-${param}`).value;
+            const el = document.getElementById(`param-${param}`);
+            let unit = "";
+            if(param === 'temp') unit = "℃";
+            if(param === 'weight') unit = "g";
+            document.getElementById(`val-${param}`).innerText = el.value + unit;
             drawRink();
         }
 
@@ -159,19 +151,16 @@
 
         function getMousePos(e) {
             const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
             return {
-                x: (e.clientX - rect.left) * scaleX,
-                y: (e.clientY - rect.top) * scaleY
+                x: (e.clientX - rect.left) * (canvas.width / rect.width),
+                y: (e.clientY - rect.top) * (canvas.height / rect.height)
             };
         }
 
         canvas.addEventListener('mousedown', (e) => {
             if (isAnimating) return;
             const mousePos = getMousePos(e);
-            const dist = Math.hypot(mousePos.x - launcher.restX, mousePos.y - launcher.restY);
-            if (dist < 25) {
+            if (Math.hypot(mousePos.x - launcher.restX, mousePos.y - launcher.restY) < 25) {
                 isDragging = true;
             }
         });
@@ -181,19 +170,13 @@
             const mousePos = getMousePos(e);
 
             let minX = launcher.x + 10;
-            const isForceLimit = document.getElementById('chk-force').checked;
-            
-            if (isForceLimit) {
-                const forceVal = parseFloat(document.getElementById('param-force').value);
-                const limitX = calcLimitXFromPower(forceVal);
-                minX = Math.max(minX, limitX);
+            if (document.getElementById('chk-force').checked) {
+                minX = Math.max(minX, calcLimitXFromPower(parseFloat(document.getElementById('param-force').value)));
             }
 
             dragX = Math.min(launcher.restX, Math.max(minX, mousePos.x));
-            
             const isGuide = document.getElementById('chk-guide').checked;
             const guideVal = isGuide ? parseFloat(document.getElementById('param-guide').value) : 50;
-            
             const maxYSpread = (guideVal - 1) / 49 * 60; 
             dragY = Math.min(launcher.restY + maxYSpread, Math.max(launcher.restY - maxYSpread, mousePos.y));
 
@@ -207,151 +190,70 @@
             }
         });
 
-        function getXFromDistance(m) {
-            const pxPerMeter = (RINK_END_X - launcher.restX) / MAX_DISTANCE_M;
-            return launcher.restX + (m * pxPerMeter);
-        }
-
-        function getDistanceFromX(x) {
-            const startX = launcher.restX;
-            const endX = RINK_END_X;
-            const pxWidth = endX - startX;
-            if (x < startX) return 0;
-            return (x - startX) * (MAX_DISTANCE_M / pxWidth);
-        }
-
+        function getXFromDistance(m) { return launcher.restX + (m * ((RINK_END_X - launcher.restX) / MAX_DISTANCE_M)); }
+        function getDistanceFromX(x) { return x < launcher.restX ? 0 : (x - launcher.restX) * (MAX_DISTANCE_M / (RINK_END_X - launcher.restX)); }
         function getActualDistance(x, y) {
-            const startX = launcher.restX;
-            const startY = launcher.restY;
-            const pxPerMeter = (RINK_END_X - startX) / MAX_DISTANCE_M;
-
-            const dxPx = x - startX;
-            const dyPx = (y - startY) * 2.2; 
-
-            const pixelDist = Math.hypot(dxPx, dyPx);
-
-            return pixelDist / pxPerMeter;
+            const pxPerMeter = (RINK_END_X - launcher.restX) / MAX_DISTANCE_M;
+            return Math.hypot(x - launcher.restX, (y - launcher.restY) * 2.2) / pxPerMeter;
         }
 
         function drawRink() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
             ctx.fillStyle = '#a5b4fc';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 目盛り線
+            // 目盛り
             ctx.strokeStyle = '#475569';
             ctx.fillStyle = '#0f172a';
             ctx.font = 'bold 11px sans-serif';
-            ctx.lineWidth = 1;
-            
             for (let m = 100; m <= MAX_DISTANCE_M; m += 100) {
                 const x = getXFromDistance(m);
-                ctx.beginPath();
-                ctx.moveTo(x, 0);
-                ctx.lineTo(x, canvas.height);
-                ctx.stroke();
-                if (m % 200 === 0 || m === 100) {
-                    ctx.fillText(m, x - 12, 15);
-                }
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+                if (m % 200 === 0 || m === 100) ctx.fillText(m, x - 12, 15);
             }
 
-            // ハウス（目標円）：1700m
+            // ハウス（目標1700m）
             const houseX = getXFromDistance(1700);
             const houseY = canvas.height / 2;
-            const pxPer100m = (RINK_END_X - launcher.restX) / (MAX_DISTANCE_M / 100);
-            const outerRadius = pxPer100m; 
+            const outerRadius = (RINK_END_X - launcher.restX) / (MAX_DISTANCE_M / 100);
 
-            ctx.beginPath();
-            ctx.arc(houseX, houseY, outerRadius, 0, Math.PI * 2);
-            ctx.fillStyle = '#ef4444';
-            ctx.fill();
+            ctx.beginPath(); ctx.arc(houseX, houseY, outerRadius, 0, Math.PI * 2); ctx.fillStyle = '#ef4444'; ctx.fill();
+            ctx.beginPath(); ctx.arc(houseX, houseY, outerRadius * 0.66, 0, Math.PI * 2); ctx.fillStyle = '#ffffff'; ctx.fill();
+            ctx.beginPath(); ctx.arc(houseX, houseY, outerRadius * 0.33, 0, Math.PI * 2); ctx.fillStyle = '#2563eb'; ctx.fill();
 
-            ctx.beginPath();
-            ctx.arc(houseX, houseY, outerRadius * 0.66, 0, Math.PI * 2);
-            ctx.fillStyle = '#ffffff';
-            ctx.fill();
+            // 発射台 & ガイド
+            ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#475569'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.roundRect(launcher.x, launcher.y, launcher.width, launcher.height, 15); ctx.fill(); ctx.stroke();
 
-            ctx.beginPath();
-            ctx.arc(houseX, houseY, outerRadius * 0.33, 0, Math.PI * 2);
-            ctx.fillStyle = '#2563eb';
-            ctx.fill();
-
-            // 発射台
-            ctx.fillStyle = '#ffffff';
-            ctx.strokeStyle = '#475569';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.roundRect(launcher.x, launcher.y, launcher.width, launcher.height, 15);
-            ctx.fill();
-            ctx.stroke();
-
-            // ガイドライン
-            const isGuide = document.getElementById('chk-guide').checked;
-            if (isGuide) {
-                const guideVal = parseFloat(document.getElementById('param-guide').value);
-                const spread = (guideVal - 1) / 49 * 60;
-                ctx.strokeStyle = '#2563eb';
-                ctx.lineWidth = 2;
-                
-                ctx.beginPath();
-                ctx.moveTo(launcher.x, launcher.restY - spread);
-                ctx.lineTo(launcher.x + launcher.width, launcher.restY - spread);
-                ctx.stroke();
-
-                ctx.beginPath();
-                ctx.moveTo(launcher.x, launcher.restY + spread);
-                ctx.lineTo(launcher.x + launcher.width, launcher.restY + spread);
-                ctx.stroke();
+            if (document.getElementById('chk-guide').checked) {
+                const spread = (parseFloat(document.getElementById('param-guide').value) - 1) / 49 * 60;
+                ctx.strokeStyle = '#2563eb'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.moveTo(launcher.x, launcher.restY - spread); ctx.lineTo(launcher.x + launcher.width, launcher.restY - spread); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(launcher.x, launcher.restY + spread); ctx.lineTo(launcher.x + launcher.width, launcher.restY + spread); ctx.stroke();
             }
 
-            // 作業標準 赤ライン
-            const isForceLimit = document.getElementById('chk-force').checked;
-            if (isForceLimit) {
-                const forceVal = parseFloat(document.getElementById('param-force').value);
-                const limitX = calcLimitXFromPower(forceVal);
-                ctx.strokeStyle = '#ef4444';
-                ctx.lineWidth = 3;
-                ctx.beginPath();
-                ctx.moveTo(limitX, launcher.y + 5);
-                ctx.lineTo(limitX, launcher.y + launcher.height - 5);
-                ctx.stroke();
+            if (document.getElementById('chk-force').checked) {
+                const limitX = calcLimitXFromPower(parseFloat(document.getElementById('param-force').value));
+                ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 3;
+                ctx.beginPath(); ctx.moveTo(limitX, launcher.y + 5); ctx.lineTo(limitX, launcher.y + launcher.height - 5); ctx.stroke();
             }
 
             // コイン
             if (!isAnimating) {
                 if (isDragging) {
-                    ctx.strokeStyle = '#f59e0b';
-                    ctx.lineWidth = 3;
-                    ctx.beginPath();
-                    ctx.moveTo(launcher.restX, launcher.restY);
-                    ctx.lineTo(dragX, dragY);
-                    ctx.stroke();
+                    ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 3;
+                    ctx.beginPath(); ctx.moveTo(launcher.restX, launcher.restY); ctx.lineTo(dragX, dragY); ctx.stroke();
                 }
-
-                ctx.beginPath();
-                ctx.arc(dragX, dragY, launcher.stoneRadius, 0, Math.PI * 2);
-                ctx.fillStyle = '#334155';
-                ctx.fill();
-                ctx.strokeStyle = '#0f172a';
-                ctx.lineWidth = 2;
-                ctx.stroke();
+                ctx.beginPath(); ctx.arc(dragX, dragY, launcher.stoneRadius, 0, Math.PI * 2);
+                ctx.fillStyle = '#334155'; ctx.fill(); ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 2; ctx.stroke();
             }
 
-            // 着地履歴
+            // 履歴
             stoneHits.forEach(stone => {
                 if (stone.x <= canvas.width && stone.y >= 0 && stone.y <= canvas.height) {
-                    const distToHouse = Math.hypot(stone.x - houseX, stone.y - houseY);
-                    const isInsideHouse = distToHouse <= outerRadius;
-                    
-                    ctx.beginPath();
-                    ctx.arc(stone.x, stone.y, 8, 0, Math.PI * 2);
-                    ctx.fillStyle = isInsideHouse ? '#ef4444' : '#1e293b';
-                    ctx.fill();
-                    
-                    ctx.strokeStyle = '#0f172a';
-                    ctx.lineWidth = 1.5;
-                    ctx.stroke();
+                    ctx.beginPath(); ctx.arc(stone.x, stone.y, 8, 0, Math.PI * 2);
+                    ctx.fillStyle = Math.hypot(stone.x - houseX, stone.y - houseY) <= outerRadius ? '#ef4444' : '#1e293b';
+                    ctx.fill(); ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 1.5; ctx.stroke();
                 }
             });
         }
@@ -360,166 +262,150 @@
             isAnimating = true;
 
             const isGuide = document.getElementById('chk-guide').checked;
-            const isFriction = document.getElementById('chk-friction').checked;
-            const isRandomFriction = document.getElementById('chk-random-friction').checked;
+            const isForceLimit = document.getElementById('chk-force').checked;
 
-            const dx = launcher.restX - dragX; 
-            const dy = dragY - launcher.restY; 
+            // チェックが無ければランダム生成
+            const temp = document.getElementById('chk-temp').checked 
+                ? parseFloat(document.getElementById('param-temp').value)
+                : Math.floor(Math.random() * 11) + 10; // 10〜20℃
 
-            const actualPower = calcPowerFromDx(dx);
+            const weight = document.getElementById('chk-weight').checked 
+                ? parseFloat(document.getElementById('param-weight').value)
+                : Math.floor(Math.random() * 11) + 10; // 10〜20g
 
-            // 初期速度計算（最初のバージョンのスピード感を維持するための適切な初速スケール）
-            let initialSpeed = dx * 0.4;
-            if (dx === 0 && dy === 0) initialSpeed = 0;
-
-            const angle = Math.atan2(-dy, dx); 
-
-            let posX = launcher.restX;
-            let posY = launcher.restY;
-            let vx = Math.cos(angle) * initialSpeed;
-            let vy = Math.sin(angle) * initialSpeed; 
-
-            // --- 摩擦力の決定処理 ---
-            let frictionCoefficient;
-            if (isRandomFriction) {
-                frictionCoefficient = 0.0200 + Math.random() * 0.0300;
-                document.getElementById('param-friction').value = frictionCoefficient.toFixed(4);
-                document.getElementById('val-friction').innerText = frictionCoefficient.toFixed(4);
-            } else if (isFriction) {
-                frictionCoefficient = parseFloat(document.getElementById('param-friction').value);
-            } else {
-                frictionCoefficient = 0.0320 + Math.random() * 0.0020;
+            // UI反映
+            if (!document.getElementById('chk-temp').checked) {
+                document.getElementById('param-temp').value = temp;
+                document.getElementById('val-temp').innerText = temp + "℃";
+            }
+            if (!document.getElementById('chk-weight').checked) {
+                document.getElementById('param-weight').value = weight;
+                document.getElementById('val-weight').innerText = weight + "g";
             }
 
+            const dx = launcher.restX - dragX;
+            const dy = dragY - launcher.restY;
+            const actualPower = calcPowerFromDx(dx);
+
+            // 物理計算：温度が高いと摩擦低下、重いと摩擦増加
+            let baseFriction = 0.045 - (temp * 0.001) + (weight * 0.0005);
+            baseFriction = Math.max(0.005, baseFriction);
+
+            const angleRad = Math.atan2(-dy, dx);
+            const angleDeg = parseFloat((angleRad * (180 / Math.PI)).toFixed(2));
+
+            let initialSpeed = dx * 0.04;
+            let posX = launcher.restX;
+            let posY = launcher.restY;
+            let vx = Math.cos(angleRad) * initialSpeed;
+            let vy = Math.sin(angleRad) * initialSpeed;
+
             let isOutOfBounds = false;
-            let lastTime = performance.now();
 
-            function animate(currentTime) {
-                // デルタタイム計算（滑らかなアニメーション用）
-                const dt = Math.min((currentTime - lastTime) / 1000, 0.1);
-                lastTime = currentTime;
+            function animate() {
+                posX += vx * 10;
+                posY += vy * 10;
 
-                // 物理運動の更新（60fps相当の係数を乗算）
-                const stepFactor = dt * 60;
-                
-                // 位置の更新
-                posX += vx * stepFactor; 
-                posY += vy * stepFactor;
+                vx *= (1 - baseFriction);
+                vy *= (1 - baseFriction);
 
-                // 減速処理（指数減衰）
-                const decay = Math.pow(1 - frictionCoefficient, stepFactor);
-                vx *= decay;
-                vy *= decay;
-
-                if (posY < 0 || posY > canvas.height) {
-                    isOutOfBounds = true;
-                }
+                if (posY < 0 || posY > canvas.height) isOutOfBounds = true;
 
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 drawRink();
 
-                ctx.beginPath();
-                ctx.arc(posX, posY, launcher.stoneRadius, 0, Math.PI * 2);
-                ctx.fillStyle = '#800000';
-                ctx.fill();
+                ctx.beginPath(); ctx.arc(posX, posY, launcher.stoneRadius, 0, Math.PI * 2);
+                ctx.fillStyle = '#800000'; ctx.fill();
 
-                const currentSpeed = Math.hypot(vx, vy);
-
-                if (currentSpeed > 0.05 && posX < RINK_END_X && !isOutOfBounds) {
+                if (Math.hypot(vx, vy) > 0.01 && posX < RINK_END_X && !isOutOfBounds) {
                     requestAnimationFrame(animate);
                 } else {
                     trialCount++;
-
                     let distX = getDistanceFromX(posX);
                     let distDiag = getActualDistance(posX, posY);
 
                     let displayX = distX.toFixed(3);
                     let displayDiag = distDiag.toFixed(3);
+                    let diffDist = (distDiag - distX).toFixed(3);
+
+                    const houseX = getXFromDistance(1700);
+                    const houseY = canvas.height / 2;
+                    const pxPer100m = (RINK_END_X - launcher.restX) / (MAX_DISTANCE_M / 100);
+                    const isHouseIn = (Math.hypot(posX - houseX, posY - houseY) <= pxPer100m) ? 1 : 0;
 
                     if (distDiag > MAX_DISTANCE_M || isOutOfBounds) {
-                        displayX = 'NA';
-                        displayDiag = 'NA';
+                        displayX = 'NA'; displayDiag = 'NA'; diffDist = 'NA';
                     } else {
                         stoneHits.push({ x: posX, y: posY });
                     }
 
                     const record = {
                         trial: trialCount,
+                        target: 1700,
                         force: actualPower,
-                        guide: isGuide ? parseFloat(document.getElementById('param-guide').value) : '-',
-                        friction: frictionCoefficient.toFixed(4),
+                        forceLimit: isForceLimit ? parseFloat(document.getElementById('param-force').value) : '制限なし',
+                        guide: isGuide ? parseFloat(document.getElementById('param-guide').value) : 50,
+                        angle: angleDeg,
+                        temp: temp,
+                        weight: weight,
+                        friction: baseFriction.toFixed(4),
                         distanceX: displayX,
                         distanceDiag: displayDiag,
-                        isRandomFrictionOn: isRandomFriction
+                        diffDist: diffDist,
+                        houseIn: isHouseIn
                     };
                     historyData.push(record);
 
+                    // テーブル更新
                     const tbody = document.getElementById('data-table');
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
                         <td>${record.trial}</td>
                         <td>${record.force}</td>
                         <td>${record.guide}</td>
+                        <td>${record.angle}°</td>
+                        <td>${record.temp}℃</td>
+                        <td>${record.weight}g</td>
                         <td><strong style="${displayX === 'NA' ? 'color:#ef4444;' : ''}">${record.distanceX}</strong></td>
                         <td><strong style="${displayDiag === 'NA' ? 'color:#ef4444;' : ''}">${record.distanceDiag}</strong></td>
+                        <td>${record.houseIn === 1 ? '◯' : '×'}</td>
                     `;
                     tbody.insertBefore(tr, tbody.firstChild);
 
-                    dragX = launcher.restX;
-                    dragY = launcher.restY;
+                    dragX = launcher.restX; dragY = launcher.restY;
                     isAnimating = false;
                     drawRink();
                 }
             }
-
-            requestAnimationFrame((timestamp) => {
-                lastTime = timestamp;
-                animate(timestamp);
-            });
+            animate();
         }
 
         function resetData() {
-            trialCount = 0;
-            historyData = [];
-            stoneHits = [];
-            dragX = launcher.restX;
-            dragY = launcher.restY;
+            trialCount = 0; historyData = []; stoneHits = [];
+            dragX = launcher.restX; dragY = launcher.restY;
             document.getElementById('data-table').innerHTML = '';
             drawRink();
         }
 
         function downloadCSV() {
-            if (historyData.length === 0) {
-                alert('データがありません。');
-                return;
-            }
-
+            if (historyData.length === 0) return alert('データがありません。');
             let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-            const includeFriction = historyData.some(r => r.isRandomFrictionOn);
+            csvContent += "試行ID,目標距離_m,投球力_px,作業標準_制限値,ガイド幅,発射角度_deg,室温_℃,コイン重さ_g,摩擦係数,到達距離_横_m,直線距離_斜め_m,横ズレ量_m,ハウスイン判定\n";
 
-            if (includeFriction) {
-                csvContent += "試行,投球力(実測),ガイド幅,摩擦（抵抗）,到達距離(横),直線距離(斜め)\n";
-                historyData.forEach(row => {
-                    csvContent += `${row.trial},${row.force},${row.guide},${row.friction},${row.distanceX},${row.distanceDiag}\n`;
-                });
-            } else {
-                csvContent += "試行,投球力(実測),ガイド幅,到達距離(横),直線距離(斜め)\n";
-                historyData.forEach(row => {
-                    csvContent += `${row.trial},${row.force},${row.guide},${row.distanceX},${row.distanceDiag}\n`;
-                });
-            }
+            historyData.forEach(r => {
+                csvContent += `${r.trial},${r.target},${r.force},${r.forceLimit},${r.guide},${r.angle},${r.temp},${r.weight},${r.friction},${r.distanceX},${r.distanceDiag},${r.diffDist},${r.houseIn}\n`;
+            });
 
-            const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "coin_shooting_data.csv");
+            link.setAttribute("href", encodeURI(csvContent));
+            link.setAttribute("download", "coin_shooting_inquiry_data.csv");
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
         }
 
-        toggleParam('force');
-        toggleParam('guide');
+        // 初期化
+        ['force', 'guide', 'temp', 'weight'].forEach(p => toggleParam(p));
         drawRink();
     </script>
 </body>
