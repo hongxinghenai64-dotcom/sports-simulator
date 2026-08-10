@@ -41,7 +41,7 @@
     <div class="desc-box">
         <strong>【遊び方】</strong><br>
         チェックボックスが外れている項目は、試行ごとに<strong>ランダムな値</strong>で変動します。<br>
-        室温が高いと滑りやすく、コインが重いと摩擦が大きくなります。目標は1700mのハウス中心です！
+        室温が高いと滑りやすく、コインが重いと摩擦が大きくなります。目標は1700mmのハウス中心です！
     </div>
 
     <!-- 設定パネル -->
@@ -87,7 +87,7 @@
         
         <div class="bottom-area">
             <div class="btn-group">
-                <button class="btn-csv" onclick="downloadCSV()">CSV出力(全14カラム)</button>
+                <button class="btn-csv" onclick="downloadCSV()">CSV出力(全13カラム)</button>
                 <button class="btn-reset" onclick="resetData()">はじめから</button>
             </div>
 
@@ -96,15 +96,15 @@
                     <thead>
                         <tr>
                             <th>試行</th>
-                            <th>投球力</th>
-                            <th>ガイド</th>
-                            <th>角度(°)</th>
-                            <th>室温</th>
-                            <th>重さ</th>
+                            <th>投球力(px)</th>
+                            <th>ガイド(px)</th>
+                            <th>角度(deg)</th>
+                            <th>室温(℃)</th>
+                            <th>重さ(g)</th>
                             <th>摩擦係数</th>
-                            <th>到達(横)</th>
-                            <th>直線(斜め)</th>
-                            <th>成功</th>
+                            <th>到達[横](mm)</th>
+                            <th>直線[斜め](mm)</th>
+                            <th>成功判定</th>
                         </tr>
                     </thead>
                     <tbody id="data-table">
@@ -123,7 +123,7 @@
         let stoneHits = [];
 
         const launcher = { x: 20, y: 50, width: 130, height: 160, stoneRadius: 10, restX: 130, restY: 130 };
-        const MAX_DISTANCE_M = 2300;
+        const MAX_DISTANCE_MM = 2300;
         const RINK_END_X = 1180;
 
         let isDragging = false;
@@ -210,11 +210,11 @@
             }
         });
 
-        function getXFromDistance(m) { return launcher.restX + (m * ((RINK_END_X - launcher.restX) / MAX_DISTANCE_M)); }
-        function getDistanceFromX(x) { return x < launcher.restX ? 0 : (x - launcher.restX) * (MAX_DISTANCE_M / (RINK_END_X - launcher.restX)); }
+        function getXFromDistance(mm) { return launcher.restX + (mm * ((RINK_END_X - launcher.restX) / MAX_DISTANCE_MM)); }
+        function getDistanceFromX(x) { return x < launcher.restX ? 0 : (x - launcher.restX) * (MAX_DISTANCE_MM / (RINK_END_X - launcher.restX)); }
         function getActualDistance(x, y) {
-            const pxPerMeter = (RINK_END_X - launcher.restX) / MAX_DISTANCE_M;
-            return Math.hypot(x - launcher.restX, (y - launcher.restY) * 2.2) / pxPerMeter;
+            const pxPerMM = (RINK_END_X - launcher.restX) / MAX_DISTANCE_MM;
+            return Math.hypot(x - launcher.restX, (y - launcher.restY) * 2.2) / pxPerMM;
         }
 
         function drawRink() {
@@ -226,16 +226,16 @@
             ctx.strokeStyle = '#475569';
             ctx.fillStyle = '#0f172a';
             ctx.font = 'bold 11px sans-serif';
-            for (let m = 100; m <= MAX_DISTANCE_M; m += 100) {
-                const x = getXFromDistance(m);
+            for (let mm = 100; mm <= MAX_DISTANCE_MM; mm += 100) {
+                const x = getXFromDistance(mm);
                 ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
-                if (m % 200 === 0 || m === 100) ctx.fillText(m, x - 12, 15);
+                if (mm % 200 === 0 || mm === 100) ctx.fillText(mm, x - 12, 15);
             }
 
-            // ハウス（目標1700m）
+            // ハウス（目標1700mm）
             const houseX = getXFromDistance(1700);
             const houseY = canvas.height / 2;
-            const outerRadius = (RINK_END_X - launcher.restX) / (MAX_DISTANCE_M / 100);
+            const outerRadius = (RINK_END_X - launcher.restX) / (MAX_DISTANCE_MM / 100);
 
             ctx.beginPath(); ctx.arc(houseX, houseY, outerRadius, 0, Math.PI * 2); ctx.fillStyle = '#ef4444'; ctx.fill();
             ctx.beginPath(); ctx.arc(houseX, houseY, outerRadius * 0.66, 0, Math.PI * 2); ctx.fillStyle = '#ffffff'; ctx.fill();
@@ -343,10 +343,12 @@
 
                     const houseX = getXFromDistance(1700);
                     const houseY = canvas.height / 2;
-                    const pxPer100m = (RINK_END_X - launcher.restX) / (MAX_DISTANCE_M / 100);
-                    const isHouseIn = (Math.hypot(posX - houseX, posY - houseY) <= pxPer100m) ? 1 : 0;
+                    const pxPer100mm = (RINK_END_X - launcher.restX) / (MAX_DISTANCE_MM / 100);
+                    
+                    // 成功判定（名義尺度："成功" または "失敗"）
+                    const isSuccess = (Math.hypot(posX - houseX, posY - houseY) <= pxPer100mm) ? '成功' : '失敗';
 
-                    if (distDiag > MAX_DISTANCE_M || isOutOfBounds) {
+                    if (distDiag > MAX_DISTANCE_MM || isOutOfBounds) {
                         displayX = 'NA'; displayDiag = 'NA'; diffDist = 'NA';
                     } else {
                         stoneHits.push({ x: posX, y: posY });
@@ -356,7 +358,7 @@
                         trial: trialCount,
                         target: 1700,
                         force: actualPower,
-                        forceLimit: isForceLimit ? parseFloat(document.getElementById('param-force').value) : '制限なし',
+                        forceLimit: isForceLimit ? parseFloat(document.getElementById('param-force').value) : 0,
                         guide: isGuide ? parseFloat(document.getElementById('param-guide').value) : 50,
                         angle: angleDeg,
                         temp: temp,
@@ -365,7 +367,7 @@
                         distanceX: displayX,
                         distanceDiag: displayDiag,
                         diffDist: diffDist,
-                        houseIn: isHouseIn
+                        houseIn: isSuccess
                     };
                     historyData.push(record);
 
@@ -376,13 +378,13 @@
                         <td>${record.trial}</td>
                         <td>${record.force}</td>
                         <td>${record.guide}</td>
-                        <td>${record.angle}°</td>
-                        <td>${record.temp}℃</td>
-                        <td>${record.weight}g</td>
+                        <td>${record.angle}</td>
+                        <td>${record.temp}</td>
+                        <td>${record.weight}</td>
                         <td>${record.friction}</td>
                         <td><strong style="${displayX === 'NA' ? 'color:#ef4444;' : ''}">${record.distanceX}</strong></td>
                         <td><strong style="${displayDiag === 'NA' ? 'color:#ef4444;' : ''}">${record.distanceDiag}</strong></td>
-                        <td>${record.houseIn === 1 ? '◯' : '×'}</td>
+                        <td>${record.houseIn}</td>
                     `;
                     tbody.insertBefore(tr, tbody.firstChild);
 
@@ -404,7 +406,7 @@
         function downloadCSV() {
             if (historyData.length === 0) return alert('データがありません。');
             let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-            csvContent += "試行ID,目標距離_m,投球力_px,作業標準_制限値,ガイド幅,発射角度_deg,室温_℃,コイン重さ_g,摩擦係数,到達距離_横_m,直線距離_斜め_m,横ズレ量_m,ハウスイン判定\n";
+            csvContent += "試行ID,目標距離(mm),投球力(px),作業標準_制限値(px),ガイド幅(px),発射角度(deg),室温(℃),コイン重さ(g),摩擦係数,到達距離_横(mm),直線距離_斜め(mm),横ズレ量(mm),ハウスイン判定\n";
 
             historyData.forEach(r => {
                 csvContent += `${r.trial},${r.target},${r.force},${r.forceLimit},${r.guide},${r.angle},${r.temp},${r.weight},${r.friction},${r.distanceX},${r.distanceDiag},${r.diffDist},${r.houseIn}\n`;
