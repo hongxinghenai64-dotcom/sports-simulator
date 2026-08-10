@@ -109,8 +109,6 @@
                             <th>試行回数</th>
                             <th>コインの状態</th>
                             <th>引き量(mm)</th>
-                            <th>引き量制限(mm)</th>
-                            <th>ガイド幅(cm)</th>
                             <th>角度(°)</th>
                             <th>騒音レベル(dB)</th>
                             <th>室温(℃)</th>
@@ -311,9 +309,6 @@
         function shootStone(overrideDx = null, overrideDy = null, isFast = false) {
             isAnimating = true;
 
-            const isGuide = document.getElementById('chk-guide').checked;
-            const isForceLimit = document.getElementById('chk-force').checked;
-
             const currentCondition = coinConditionList[Math.floor(Math.random() * coinConditionList.length)];
             const noise = Math.floor(Math.random() * 41) + 40;
             const currentWeather = weatherList[Math.floor(Math.random() * weatherList.length)];
@@ -349,17 +344,15 @@
             let dy = overrideDy !== null ? overrideDy : (dragY - launcher.restY);
             const actualPower = calcPowerFromDx(dx);
 
-            // 心拍数の計算ロジック（「本来の平常値（75bpm）」に戻ろうとする復元力を追加）
+            // 心拍数の計算ロジック
             const targetHR = 75;
             let hrDiff = targetHR - currentHeartRate;
-            // 失敗すると少し上がるが、基本は平常値へ引き戻される（ホメオスタシス）
             let change = hrDiff * 0.2 + (lastResult === '失敗' ? (Math.random() * 6 + 2) : -(Math.random() * 6 + 2));
             currentHeartRate += change;
-            currentHeartRate = Math.min(110, Math.max(65, currentHeartRate)); // マックスでも110前後（少し緊張した状態）で留める
+            currentHeartRate = Math.min(110, Math.max(65, currentHeartRate));
             let heartRateVal = Math.round(currentHeartRate + (Math.random() * 8 - 4));
             heartRateVal = Math.min(115, Math.max(62, heartRateVal));
 
-            // 到達距離への影響はほぼなく、角度の微小なブレ（横ズレ）にほんの少しだけ影響（誤差レベル）
             let hrEffect = (heartRateVal - 75) * 0.02 * (Math.random() - 0.5);
             dy += hrEffect;
 
@@ -445,8 +438,6 @@
                             trial: trialCount,
                             coinCondition: currentCondition,
                             force: actualPower,
-                            forceLimit: isForceLimit ? parseFloat(document.getElementById('param-force').value) : "-",
-                            guide: isGuide ? parseFloat(document.getElementById('param-guide').value) : "-",
                             angle: angleDeg,
                             noise: noise,
                             temp: temp,
@@ -471,8 +462,6 @@
                             <td>${record.trial}</td>
                             <td>${record.coinCondition}</td>
                             <td>${record.force}</td>
-                            <td>${record.forceLimit}</td>
-                            <td>${record.guide}</td>
                             <td>${record.angle}</td>
                             <td>${record.noise}</td>
                             <td>${record.temp}</td>
@@ -554,10 +543,10 @@
         function downloadCSV() {
             if (historyData.length === 0) return alert('データがありません。');
             let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-            csvContent += "試行回数,コインの状態,引き量(mm),引き量制限(mm),ガイド幅(cm),角度(°),騒音レベル(dB),室温(℃),湿度(%),天気,コイン重さ(g),摩擦係数,心拍数(bpm),連続成功,移動時間(秒),到達距離_横(mm),直線距離_斜め(mm),横ズレ(mm),ハウスイン判定\n";
+            csvContent += "試行回数,コインの状態,引き量(mm),角度(°),騒音レベル(dB),室温(℃),湿度(%),天気,コイン重さ(g),摩擦係数,心拍数(bpm),連続成功,移動時間(秒),到達距離_横(mm),直線距離_斜め(mm),横ズレ(mm),ハウスイン判定\n";
 
             historyData.forEach(r => {
-                csvContent += `${r.trial},${r.coinCondition},${r.force},${r.forceLimit},${r.guide},${r.angle},${r.noise},${r.temp},${r.humidity},${r.weather},${r.weight},${r.friction},${r.heartRate},${r.streak},${r.moveTime},${r.distanceX},${r.distanceDiag},${r.sideDev},${r.houseIn}\n`;
+                csvContent += `${r.trial},${r.coinCondition},${r.force},${r.angle},${r.noise},${r.temp},${r.humidity},${r.weather},${r.weight},${r.friction},${r.heartRate},${r.streak},${r.moveTime},${r.distanceX},${r.distanceDiag},${r.sideDev},${r.houseIn}\n`;
             });
 
             const link = document.createElement("a");
