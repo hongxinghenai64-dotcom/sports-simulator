@@ -25,7 +25,7 @@
         .btn-reset { background-color: #64748b; color: white; }
         .btn-reset:hover { background-color: #475569; }
         
-        .table-container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 820px; max-height: 250px; overflow-y: auto; }
+        .table-container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 100%; max-width: 1000px; max-height: 250px; overflow-y: auto; }
         table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: center; }
         th, td { padding: 6px 6px; border: 1px solid #cbd5e1; }
         th { background-color: #f1f5f9; font-weight: bold; position: sticky; top: 0; }
@@ -48,14 +48,14 @@
     <div class="top-controls">
         <div class="control-item">
             <input type="checkbox" id="chk-force" onchange="toggleParam('force')">
-            <label for="chk-force">投球力制限</label>
+            <label for="chk-force">引き量制限(mm)</label>
             <input type="range" id="param-force" min="40" max="160" value="120" oninput="updateVal('force')" class="disabled-input">
             <span id="val-force" class="val-box disabled-input">-</span>
         </div>
 
         <div class="control-item">
             <input type="checkbox" id="chk-guide" onchange="toggleParam('guide')">
-            <label for="chk-guide">ガイド幅</label>
+            <label for="chk-guide">ガイド幅(cm)</label>
             <input type="range" id="param-guide" min="1" max="50" value="35" oninput="updateVal('guide')" class="disabled-input">
             <span id="val-guide" class="val-box disabled-input">-</span>
         </div>
@@ -95,15 +95,18 @@
                 <table>
                     <thead>
                         <tr>
-                            <th>試行</th>
-                            <th>投球力(px)</th>
-                            <th>ガイド(px)</th>
-                            <th>角度(deg)</th>
+                            <th>試行ID</th>
+                            <th>目標距離(mm)</th>
+                            <th>引き量(mm)</th>
+                            <th>引き量制限(mm)</th>
+                            <th>ガイド幅(cm)</th>
+                            <th>角度(°)</th>
                             <th>室温(℃)</th>
                             <th>重さ(g)</th>
                             <th>摩擦係数</th>
                             <th>到達[横](mm)</th>
                             <th>直線[斜め](mm)</th>
+                            <th>横ズレ(mm)</th>
                             <th>成功判定</th>
                         </tr>
                     </thead>
@@ -145,6 +148,8 @@
             }
 
             let unit = "";
+            if(param === 'force') unit = "mm";
+            if(param === 'guide') unit = "cm";
             if(param === 'temp') unit = "℃";
             if(param === 'weight') unit = "g";
             
@@ -345,7 +350,7 @@
                     const houseY = canvas.height / 2;
                     const pxPer100mm = (RINK_END_X - launcher.restX) / (MAX_DISTANCE_MM / 100);
                     
-                    // 成功判定（名義尺度："成功" または "失敗"）
+                    // 成功判定（"成功" または "失敗"）
                     const isSuccess = (Math.hypot(posX - houseX, posY - houseY) <= pxPer100mm) ? '成功' : '失敗';
 
                     if (distDiag > MAX_DISTANCE_MM || isOutOfBounds) {
@@ -371,12 +376,14 @@
                     };
                     historyData.push(record);
 
-                    // テーブル更新
+                    // テーブル更新（画面表示とCSVの項目・順番を統一）
                     const tbody = document.getElementById('data-table');
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
                         <td>${record.trial}</td>
+                        <td>${record.target}</td>
                         <td>${record.force}</td>
+                        <td>${record.forceLimit}</td>
                         <td>${record.guide}</td>
                         <td>${record.angle}</td>
                         <td>${record.temp}</td>
@@ -384,6 +391,7 @@
                         <td>${record.friction}</td>
                         <td><strong style="${displayX === 'NA' ? 'color:#ef4444;' : ''}">${record.distanceX}</strong></td>
                         <td><strong style="${displayDiag === 'NA' ? 'color:#ef4444;' : ''}">${record.distanceDiag}</strong></td>
+                        <td>${record.diffDist}</td>
                         <td>${record.houseIn}</td>
                     `;
                     tbody.insertBefore(tr, tbody.firstChild);
@@ -406,7 +414,7 @@
         function downloadCSV() {
             if (historyData.length === 0) return alert('データがありません。');
             let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-            csvContent += "試行ID,目標距離(mm),投球力(px),作業標準_制限値(px),ガイド幅(px),発射角度(deg),室温(℃),コイン重さ(g),摩擦係数,到達距離_横(mm),直線距離_斜め(mm),横ズレ量(mm),ハウスイン判定\n";
+            csvContent += "試行ID,目標距離(mm),引き量(mm),引き量制限(mm),ガイド幅(cm),角度(°),室温(℃),コイン重さ(g),摩擦係数,到達距離_横(mm),直線距離_斜め(mm),横ズレ(mm),ハウスイン判定\n";
 
             historyData.forEach(r => {
                 csvContent += `${r.trial},${r.target},${r.force},${r.forceLimit},${r.guide},${r.angle},${r.temp},${r.weight},${r.friction},${r.distanceX},${r.distanceDiag},${r.diffDist},${r.houseIn}\n`;
