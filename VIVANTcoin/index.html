@@ -87,7 +87,7 @@
         
         <div class="bottom-area">
             <div class="btn-group">
-                <button class="btn-csv" onclick="downloadCSV()">CSV出力(全13カラム)</button>
+                <button class="btn-csv" onclick="downloadCSV()">CSV出力(全14カラム)</button>
                 <button class="btn-reset" onclick="resetData()">はじめから</button>
             </div>
 
@@ -96,14 +96,15 @@
                     <thead>
                         <tr>
                             <th>試行ID</th>
-                            <th>目標距離(mm)</th>
                             <th>引き量(mm)</th>
                             <th>引き量制限(mm)</th>
                             <th>ガイド幅(cm)</th>
                             <th>角度(°)</th>
                             <th>室温(℃)</th>
+                            <th>天気</th>
                             <th>重さ(g)</th>
                             <th>摩擦係数</th>
+                            <th>移動時間(秒)</th>
                             <th>到達[横](mm)</th>
                             <th>直線[斜め](mm)</th>
                             <th>横ズレ(mm)</th>
@@ -133,6 +134,8 @@
         let dragX = launcher.restX;
         let dragY = launcher.restY;
         let isAnimating = false;
+
+        const weatherList = ['☀️ 晴れ', '☁️ 曇り', '🌧 雨', '❄️ 雪'];
 
         function calcPowerFromDx(dx) { return Math.round(dx * 1.6); }
         function calcLimitXFromPower(power) { return launcher.restX - (power / 1.6); }
@@ -289,6 +292,9 @@
             const isGuide = document.getElementById('chk-guide').checked;
             const isForceLimit = document.getElementById('chk-force').checked;
 
+            // ランダム天気の選定
+            const currentWeather = weatherList[Math.floor(Math.random() * weatherList.length)];
+
             // チェックが無ければランダム生成（記録用）
             const temp = document.getElementById('chk-temp').checked 
                 ? parseFloat(document.getElementById('param-temp').value)
@@ -319,8 +325,10 @@
             let vy = Math.sin(angleRad) * initialSpeed;
 
             let isOutOfBounds = false;
+            let frameCount = 0; // 移動時間の計算用フレームカウンター
 
             function animate() {
+                frameCount++;
                 posX += vx * 10;
                 posY += vy * 10;
 
@@ -346,6 +354,9 @@
                     let displayDiag = distDiag.toFixed(3);
                     let diffDist = (distDiag - distX).toFixed(3);
 
+                    // 移動時間を現実的な秒数表現に変換（フレーム数×定数で計算）
+                    let moveTimeSeconds = (frameCount * 0.045).toFixed(2);
+
                     const houseX = getXFromDistance(1700);
                     const houseY = canvas.height / 2;
                     const pxPer100mm = (RINK_END_X - launcher.restX) / (MAX_DISTANCE_MM / 100);
@@ -361,14 +372,15 @@
 
                     const record = {
                         trial: trialCount,
-                        target: 1700,
                         force: actualPower,
-                        forceLimit: isForceLimit ? parseFloat(document.getElementById('param-force').value) : 0,
+                        forceLimit: isForceLimit ? parseFloat(document.getElementById('param-force').value) : "-",
                         guide: isGuide ? parseFloat(document.getElementById('param-guide').value) : 50,
                         angle: angleDeg,
                         temp: temp,
+                        weather: currentWeather,
                         weight: weight,
                         friction: baseFriction.toFixed(4),
+                        moveTime: moveTimeSeconds,
                         distanceX: displayX,
                         distanceDiag: displayDiag,
                         diffDist: diffDist,
@@ -381,14 +393,15 @@
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
                         <td>${record.trial}</td>
-                        <td>${record.target}</td>
                         <td>${record.force}</td>
                         <td>${record.forceLimit}</td>
                         <td>${record.guide}</td>
                         <td>${record.angle}</td>
                         <td>${record.temp}</td>
+                        <td>${record.weather}</td>
                         <td>${record.weight}</td>
                         <td>${record.friction}</td>
+                        <td>${record.moveTime}</td>
                         <td><strong style="${displayX === 'NA' ? 'color:#ef4444;' : ''}">${record.distanceX}</strong></td>
                         <td><strong style="${displayDiag === 'NA' ? 'color:#ef4444;' : ''}">${record.distanceDiag}</strong></td>
                         <td>${record.diffDist}</td>
@@ -414,10 +427,10 @@
         function downloadCSV() {
             if (historyData.length === 0) return alert('データがありません。');
             let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-            csvContent += "試行ID,目標距離(mm),引き量(mm),引き量制限(mm),ガイド幅(cm),角度(°),室温(℃),コイン重さ(g),摩擦係数,到達距離_横(mm),直線距離_斜め(mm),横ズレ(mm),ハウスイン判定\n";
+            csvContent += "試行ID,引き量(mm),引き量制限(mm),ガイド幅(cm),角度(°),室温(℃),天気,コイン重さ(g),摩擦係数,移動時間(秒),到達距離_横(mm),直線距離_斜め(mm),横ズレ(mm),ハウスイン判定\n";
 
             historyData.forEach(r => {
-                csvContent += `${r.trial},${r.target},${r.force},${r.forceLimit},${r.guide},${r.angle},${r.temp},${r.weight},${r.friction},${r.distanceX},${r.distanceDiag},${r.diffDist},${r.houseIn}\n`;
+                csvContent += `${r.trial},${r.force},${r.forceLimit},${r.guide},${r.angle},${r.temp},${r.weather},${r.weight},${r.friction},${r.moveTime},${r.distanceX},${r.distanceDiag},${r.diffDist},${r.houseIn}\n`;
             });
 
             const link = document.createElement("a");
