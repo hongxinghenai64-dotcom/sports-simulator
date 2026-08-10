@@ -18,12 +18,16 @@
         canvas { background-color: #a5b4fc; border: 2px solid #6366f1; border-radius: 8px; width: 100%; max-width: 1200px; height: 260px; display: block; cursor: crosshair; }
         
         .bottom-area { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
-        .btn-group { display: flex; gap: 10px; }
-        button { padding: 10px 20px; font-size: 14px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; transition: 0.2s; }
+        .btn-group { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+        button { padding: 10px 16px; font-size: 13px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; transition: 0.2s; }
         .btn-csv { background-color: #6366f1; color: white; }
         .btn-csv:hover { background-color: #4f46e5; }
+        .btn-auto { background-color: #10b981; color: white; }
+        .btn-auto:hover { background-color: #059669; }
         .btn-reset { background-color: #64748b; color: white; }
         .btn-reset:hover { background-color: #475569; }
+        
+        .auto-box { display: flex; align-items: center; gap: 8px; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 6px 12px; border-radius: 6px; }
         
         .table-container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 100%; max-width: 1200px; max-height: 280px; overflow-y: auto; overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; font-size: 11px; text-align: center; white-space: nowrap; }
@@ -40,8 +44,8 @@
     
     <div class="desc-box">
         <strong>【遊び方】</strong><br>
+        手動でドラッグして発射するか、下の「自動実行」でデータを一括生成できます。<br>
         チェックボックスが外れている項目は、試行ごとに<strong>ランダムな値</strong>で変動します。<br>
-        室温やコインの状態によって滑りやすさが変化します。目標は1700mmのハウス中心です！<br>
         ※蓄積されたデータはCSV出力して相関分析や可視化（EDA）を行えます。
     </div>
 
@@ -88,6 +92,12 @@
         
         <div class="bottom-area">
             <div class="btn-group">
+                <div class="auto-box">
+                    <label for="auto-count" style="font-weight:bold; font-size:12px;">⚡ 自動試行回数:</label>
+                    <input type="range" id="auto-count" min="20" max="200" value="50" step="10" oninput="document.getElementById('val-auto-count').innerText = this.value + '回'">
+                    <span id="val-auto-count" style="font-weight:bold; font-size:12px; width:45px;">50回</span>
+                    <button class="btn-auto" id="btn-run-auto" onclick="runAutoSimulation()">自動実行</button>
+                </div>
                 <button class="btn-csv" onclick="downloadCSV()">CSV出力</button>
                 <button class="btn-reset" onclick="resetData()">はじめから</button>
             </div>
@@ -291,43 +301,33 @@
             });
         }
 
-        function shootStone() {
+        function shootStone(overrideDx = null, overrideDy = null, isFast = false) {
             isAnimating = true;
 
             const isGuide = document.getElementById('chk-guide').checked;
             const isForceLimit = document.getElementById('chk-force').checked;
 
-            // コインの状態
             const currentCondition = coinConditionList[Math.floor(Math.random() * coinConditionList.length)];
-
-            // 騒音レベル (40dB〜80dB)
             const noise = Math.floor(Math.random() * 41) + 40;
-
-            // 天気
             const currentWeather = weatherList[Math.floor(Math.random() * weatherList.length)];
 
-            // 湿度（%）：天気に連動
             let humidity = 50;
-            if (currentWeather === '雨') humidity = Math.floor(Math.random() * 16) + 75; // 75〜90%
-            else if (currentWeather === '雪') humidity = Math.floor(Math.random() * 21) + 60; // 60〜80%
-            else if (currentWeather === '晴れ') humidity = Math.floor(Math.random() * 21) + 30; // 30〜50%
-            else humidity = Math.floor(Math.random() * 21) + 45; // 45〜65% (曇り)
+            if (currentWeather === '雨') humidity = Math.floor(Math.random() * 16) + 75;
+            else if (currentWeather === '雪') humidity = Math.floor(Math.random() * 21) + 60;
+            else if (currentWeather === '晴れ') humidity = Math.floor(Math.random() * 21) + 30;
+            else humidity = Math.floor(Math.random() * 21) + 45;
 
-            // 重さ（g）：固定または1.0〜10.0gでランダム
             let weight = 5.0;
             if (document.getElementById('chk-weight').checked) {
                 weight = parseFloat(document.getElementById('param-weight').value);
             } else {
-                // 1.0g〜10.0gの範囲でランダム設定（小数第1位）
                 weight = parseFloat((Math.random() * 9.0 + 1.0).toFixed(1));
             }
 
-            // 室温（℃）
             const temp = document.getElementById('chk-temp').checked 
                 ? parseFloat(document.getElementById('param-temp').value)
-                : Math.floor(Math.random() * 11) + 10; // 10〜20℃
+                : Math.floor(Math.random() * 11) + 10;
 
-            // 摩擦係数の計算
             let conditionFrictionAdd = 0;
             if (currentCondition === 'やや汚れ') conditionFrictionAdd = 0.005;
             if (currentCondition === '黒ずみ（古硬貨）') conditionFrictionAdd = 0.012;
@@ -338,11 +338,10 @@
             
             baseFriction = Math.max(0.005, baseFriction);
 
-            const dx = launcher.restX - dragX;
-            let dy = dragY - launcher.restY;
+            const dx = overrideDx !== null ? overrideDx : (launcher.restX - dragX);
+            let dy = overrideDy !== null ? overrideDy : (dragY - launcher.restY);
             const actualPower = calcPowerFromDx(dx);
 
-            // 騒音による角度ブレ
             const noiseEffect = (noise - 40) / 40 * (Math.random() - 0.5) * 4;
             dy += noiseEffect;
 
@@ -358,98 +357,144 @@
             let isOutOfBounds = false;
             let frameCount = 0;
 
-            function animate() {
-                frameCount++;
-                posX += vx * 10;
-                posY += vy * 10;
+            return new Promise((resolve) => {
+                function animate() {
+                    const stepCount = isFast ? 10 : 1; // 自動実行時は高速化
+                    for(let i = 0; i < stepCount; i++) {
+                        frameCount++;
+                        posX += vx * 10;
+                        posY += vy * 10;
 
-                vx *= (1 - baseFriction);
-                vy *= (1 - baseFriction);
+                        vx *= (1 - baseFriction);
+                        vy *= (1 - baseFriction);
 
-                if (posY < 0 || posY > canvas.height) isOutOfBounds = true;
-
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                drawRink();
-
-                ctx.beginPath(); ctx.arc(posX, posY, launcher.stoneRadius, 0, Math.PI * 2);
-                ctx.fillStyle = '#800000'; ctx.fill();
-
-                if (Math.hypot(vx, vy) > 0.01 && posX < RINK_END_X && !isOutOfBounds) {
-                    requestAnimationFrame(animate);
-                } else {
-                    trialCount++;
-                    let distX = getDistanceFromX(posX);
-                    let distDiag = getActualDistance(posX, posY);
-
-                    let displayX = distX.toFixed(3);
-                    let displayDiag = distDiag.toFixed(3);
-                    let diffDist = (distDiag - distX).toFixed(3);
-
-                    let moveTimeSeconds = (frameCount * 0.045).toFixed(2);
-
-                    const houseX = getXFromDistance(1700);
-                    const houseY = canvas.height / 2;
-                    const pxPer100mm = (RINK_END_X - launcher.restX) / (MAX_DISTANCE_MM / 100);
-                    
-                    const isSuccess = (Math.hypot(posX - houseX, posY - houseY) <= pxPer100mm) ? '成功' : '失敗';
-
-                    if (distDiag > MAX_DISTANCE_MM || isOutOfBounds) {
-                        displayX = 'NA'; displayDiag = 'NA'; diffDist = 'NA';
-                    } else {
-                        stoneHits.push({ x: posX, y: posY });
+                        if (posY < 0 || posY > canvas.height) {
+                            isOutOfBounds = true;
+                            break;
+                        }
+                        if (Math.hypot(vx, vy) <= 0.01 || posX >= RINK_END_X) break;
                     }
 
-                    const record = {
-                        trial: trialCount,
-                        coinCondition: currentCondition,
-                        force: actualPower,
-                        forceLimit: isForceLimit ? parseFloat(document.getElementById('param-force').value) : "-",
-                        guide: isGuide ? parseFloat(document.getElementById('param-guide').value) : 50,
-                        angle: angleDeg,
-                        noise: noise,
-                        temp: temp,
-                        humidity: humidity,
-                        weather: currentWeather,
-                        weight: weight,
-                        friction: baseFriction.toFixed(4),
-                        moveTime: moveTimeSeconds,
-                        distanceX: displayX,
-                        distanceDiag: displayDiag,
-                        diffDist: diffDist,
-                        houseIn: isSuccess
-                    };
-                    historyData.push(record);
-
-                    // テーブル更新
-                    const tbody = document.getElementById('data-table');
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td>${record.trial}</td>
-                        <td>${record.coinCondition}</td>
-                        <td>${record.force}</td>
-                        <td>${record.forceLimit}</td>
-                        <td>${record.guide}</td>
-                        <td>${record.angle}</td>
-                        <td>${record.noise}</td>
-                        <td>${record.temp}</td>
-                        <td>${record.humidity}%</td>
-                        <td>${record.weather}</td>
-                        <td>${record.weight}</td>
-                        <td>${record.friction}</td>
-                        <td>${record.moveTime}</td>
-                        <td><strong style="${displayX === 'NA' ? 'color:#ef4444;' : ''}">${record.distanceX}</strong></td>
-                        <td><strong style="${displayDiag === 'NA' ? 'color:#ef4444;' : ''}">${record.distanceDiag}</strong></td>
-                        <td>${record.diffDist}</td>
-                        <td>${record.houseIn}</td>
-                    `;
-                    tbody.insertBefore(tr, tbody.firstChild);
-
-                    dragX = launcher.restX; dragY = launcher.restY;
-                    isAnimating = false;
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
                     drawRink();
+
+                    ctx.beginPath(); ctx.arc(posX, posY, launcher.stoneRadius, 0, Math.PI * 2);
+                    ctx.fillStyle = '#800000'; ctx.fill();
+
+                    if (Math.hypot(vx, vy) > 0.01 && posX < RINK_END_X && !isOutOfBounds) {
+                        if (isFast) {
+                            setTimeout(animate, 0);
+                        } else {
+                            requestAnimationFrame(animate);
+                        }
+                    } else {
+                        trialCount++;
+                        let distX = getDistanceFromX(posX);
+                        let distDiag = getActualDistance(posX, posY);
+
+                        let displayX = distX.toFixed(3);
+                        let displayDiag = distDiag.toFixed(3);
+                        let diffDist = (distDiag - distX).toFixed(3);
+
+                        let moveTimeSeconds = (frameCount * 0.045).toFixed(2);
+
+                        const houseX = getXFromDistance(1700);
+                        const houseY = canvas.height / 2;
+                        const pxPer100mm = (RINK_END_X - launcher.restX) / (MAX_DISTANCE_MM / 100);
+                        
+                        const isSuccess = (Math.hypot(posX - houseX, posY - houseY) <= pxPer100mm) ? '成功' : '失敗';
+
+                        // 表記を NA から「測定不能」に変更
+                        if (distDiag > MAX_DISTANCE_MM || isOutOfBounds) {
+                            displayX = '測定不能'; 
+                            displayDiag = '測定不能'; 
+                            diffDist = '測定不能';
+                        } else {
+                            stoneHits.push({ x: posX, y: posY });
+                        }
+
+                        const record = {
+                            trial: trialCount,
+                            coinCondition: currentCondition,
+                            force: actualPower,
+                            forceLimit: isForceLimit ? parseFloat(document.getElementById('param-force').value) : "-",
+                            guide: isGuide ? parseFloat(document.getElementById('param-guide').value) : 50,
+                            angle: angleDeg,
+                            noise: noise,
+                            temp: temp,
+                            humidity: humidity,
+                            weather: currentWeather,
+                            weight: weight,
+                            friction: baseFriction.toFixed(4),
+                            moveTime: moveTimeSeconds,
+                            distanceX: displayX,
+                            distanceDiag: displayDiag,
+                            diffDist: diffDist,
+                            houseIn: isSuccess
+                        };
+                        historyData.push(record);
+
+                        // テーブル更新
+                        const tbody = document.getElementById('data-table');
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${record.trial}</td>
+                            <td>${record.coinCondition}</td>
+                            <td>${record.force}</td>
+                            <td>${record.forceLimit}</td>
+                            <td>${record.guide}</td>
+                            <td>${record.angle}</td>
+                            <td>${record.noise}</td>
+                            <td>${record.temp}</td>
+                            <td>${record.humidity}%</td>
+                            <td>${record.weather}</td>
+                            <td>${record.weight}</td>
+                            <td>${record.friction}</td>
+                            <td>${record.moveTime}</td>
+                            <td><strong style="${displayX === '測定不能' ? 'color:#ef4444;' : ''}">${record.distanceX}</strong></td>
+                            <td><strong style="${displayDiag === '測定不能' ? 'color:#ef4444;' : ''}">${record.distanceDiag}</strong></td>
+                            <td>${record.diffDist}</td>
+                            <td>${record.houseIn}</td>
+                        `;
+                        tbody.insertBefore(tr, tbody.firstChild);
+
+                        dragX = launcher.restX; dragY = launcher.restY;
+                        isAnimating = false;
+                        drawRink();
+                        resolve();
+                    }
                 }
+                animate();
+            });
+        }
+
+        async function runAutoSimulation() {
+            if (isAnimating) return;
+            const count = parseInt(document.getElementById('auto-count').value);
+            const btn = document.getElementById('btn-run-auto');
+            btn.disabled = true;
+            btn.innerText = "実行中...";
+
+            for (let i = 0; i < count; i++) {
+                // 自動実行用のランダムな引っ張り（引き量・角度）の生成
+                let minDx = 25; // 約40mm相当
+                if (document.getElementById('chk-force').checked) {
+                    const limitVal = parseFloat(document.getElementById('param-force').value);
+                    minDx = limitVal / 1.6;
+                }
+                const maxDx = 100; // 約160mm相当
+                const randomDx = Math.random() * (maxDx - minDx) + minDx;
+
+                const isGuide = document.getElementById('chk-guide').checked;
+                const guideVal = isGuide ? parseFloat(document.getElementById('param-guide').value) : 50;
+                const maxYSpread = (guideVal - 1) / 49 * 60;
+                const randomDy = (Math.random() * 2 - 1) * maxYSpread;
+
+                await shootStone(randomDx, randomDy, true);
             }
-            animate();
+
+            btn.disabled = false;
+            btn.innerText = "自動実行";
         }
 
         function resetData() {
@@ -462,7 +507,7 @@
         function downloadCSV() {
             if (historyData.length === 0) return alert('データがありません。');
             let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-            csvContent += "試行回数,コインの状態,引き量(mm),引き量制限(mm),ガイド幅(cm),角度(°),騒音レベル(dB),室温(℃),湿度(%),天気,重さ(g),摩擦係数,移動時間(秒),到達距離_横(mm),直線距離_斜め(mm),横ズレ(mm),ハウスイン判定\n";
+            csvContent += "試行回数,コインの状態,引き量(mm),引き量制限(mm),ガイド幅(cm),角度(°),騒音レベル(dB),室温(℃),湿度(%),天気,コイン重さ(g),摩擦係数,移動時間(秒),到達距離_横(mm),直線距離_斜め(mm),横ズレ(mm),ハウスイン判定\n";
 
             historyData.forEach(r => {
                 csvContent += `${r.trial},${r.coinCondition},${r.force},${r.forceLimit},${r.guide},${r.angle},${r.noise},${r.temp},${r.humidity},${r.weather},${r.weight},${r.friction},${r.moveTime},${r.distanceX},${r.distanceDiag},${r.diffDist},${r.houseIn}\n`;
