@@ -41,7 +41,7 @@
     <div class="desc-box">
         <strong>【遊び方】</strong><br>
         チェックボックスが外れている項目は、試行ごとに<strong>ランダムな値</strong>で変動します。<br>
-        床の傾きは「前後（坂道）」のイメージで、上り坂（マイナス）だと減速しやすく、下り坂（プラス）だと遠くまで伸びます。
+        引っ張ってコインを打ち出し、1700m地点の「ハウス（的）」を狙いましょう！
     </div>
 
     <!-- 設定パネル -->
@@ -73,13 +73,6 @@
             <input type="range" id="param-weight" min="5" max="30" value="15" step="1" oninput="updateVal('weight')" class="disabled-input">
             <span id="val-weight" class="val-box disabled-input">15g</span>
         </div>
-
-        <div class="control-item">
-            <input type="checkbox" id="chk-tilt" onchange="toggleParam('tilt')">
-            <label for="chk-tilt">📐 床勾配(°)</label>
-            <input type="range" id="param-tilt" min="-3" max="3" value="0" step="0.5" oninput="updateVal('tilt')" class="disabled-input">
-            <span id="val-tilt" class="val-box disabled-input">0°</span>
-        </div>
     </div>
 
     <div class="simulation-container">
@@ -87,7 +80,7 @@
         
         <div class="bottom-area">
             <div class="btn-group">
-                <button class="btn-csv" onclick="downloadCSV()">CSV出力(全15カラム)</button>
+                <button class="btn-csv" onclick="downloadCSV()">CSV出力</button>
                 <button class="btn-reset" onclick="resetData()">はじめから</button>
             </div>
 
@@ -101,7 +94,6 @@
                             <th>角度(°)</th>
                             <th>室温</th>
                             <th>重さ</th>
-                            <th>傾き</th>
                             <th>摩擦</th>
                             <th>到達(横)</th>
                             <th>直線(斜め)</th>
@@ -140,7 +132,6 @@
             let unit = "";
             if(param === 'temp') unit = "℃";
             if(param === 'weight') unit = "g";
-            if(param === 'tilt') unit = "°";
             document.getElementById(`val-${param}`).innerText = el.value + unit;
             drawRink();
         }
@@ -282,10 +273,6 @@
                 ? parseFloat(document.getElementById('param-weight').value)
                 : Math.floor(Math.random() * 11) + 10;
 
-            const tilt = document.getElementById('chk-tilt').checked 
-                ? parseFloat(document.getElementById('param-tilt').value)
-                : (Math.floor(Math.random() * 13) - 6) / 2;
-
             if (!document.getElementById('chk-temp').checked) {
                 document.getElementById('param-temp').value = temp;
                 document.getElementById('val-temp').innerText = temp + "℃";
@@ -294,43 +281,41 @@
                 document.getElementById('param-weight').value = weight;
                 document.getElementById('val-weight').innerText = weight + "g";
             }
-            if (!document.getElementById('chk-tilt').checked) {
-                document.getElementById('param-tilt').value = tilt;
-                document.getElementById('val-tilt').innerText = tilt + "°";
-            }
 
             const dx = launcher.restX - dragX;
             const dy = dragY - launcher.restY;
             const actualPower = calcPowerFromDx(dx);
 
+            // 摩擦係数計算
             let baseFriction = 0.045 - (temp * 0.001) + (weight * 0.0005);
             baseFriction = Math.max(0.005, baseFriction);
 
             const angleRad = Math.atan2(-dy, dx);
             const angleDeg = parseFloat((angleRad * (180 / Math.PI)).toFixed(2));
 
-            let initialSpeed = dx * 0.04;
+            let speed = dx * 0.4; // 初期速度
             let posX = launcher.restX;
             let posY = launcher.restY;
-            let vx = Math.cos(angleRad) * initialSpeed;
-            let vy = Math.sin(angleRad) * initialSpeed;
-
-            // 坂道の影響度を小さく設定 (0.0008 -> 0.0002)
-            const slopeAccelX = tilt * 0.0002; 
+            
+            // 減速加速度（動摩擦による減速：毎ステップ一定量を引き算）
+            const deceleration = baseFriction * 0.15;
             let isOutOfBounds = false;
 
             function animate() {
-                // 1画面描画フレームあたり3回分物理処理を進める
-                const STEPS_PER_FRAME = 3;
+                const STEPS_PER_FRAME = 3; // 3倍速でスムーズ進行
                 let isStopped = false;
 
                 for (let i = 0; i < STEPS_PER_FRAME; i++) {
-                    posX += vx * 10;
-                    posY += vy * 10;
+                    speed -= deceleration;
 
-                    vx += slopeAccelX;
-                    vx *= (1 - baseFriction);
-                    vy *= (1 - baseFriction);
+                    if (speed <= 0) {
+                        speed = 0;
+                        isStopped = true;
+                        break;
+                    }
+
+                    posX += Math.cos(angleRad) * speed;
+                    posY += Math.sin(angleRad) * speed;
 
                     if (posY < 0 || posY > canvas.height) {
                         isOutOfBounds = true;
@@ -338,7 +323,7 @@
                         break;
                     }
 
-                    if (Math.hypot(vx, vy) <= 0.01 || posX >= RINK_END_X) {
+                    if (posX >= RINK_END_X) {
                         isStopped = true;
                         break;
                     }
@@ -381,7 +366,6 @@
                         angle: angleDeg,
                         temp: temp,
                         weight: weight,
-                        tilt: tilt,
                         friction: baseFriction.toFixed(4),
                         distanceX: displayX,
                         distanceDiag: displayDiag,
@@ -399,7 +383,6 @@
                         <td>${record.angle}°</td>
                         <td>${record.temp}℃</td>
                         <td>${record.weight}g</td>
-                        <td>${record.tilt}°</td>
                         <td>${record.friction}</td>
                         <td><strong style="${displayX === 'NA' ? 'color:#ef4444;' : ''}">${record.distanceX}</strong></td>
                         <td><strong style="${displayDiag === 'NA' ? 'color:#ef4444;' : ''}">${record.distanceDiag}</strong></td>
@@ -425,10 +408,10 @@
         function downloadCSV() {
             if (historyData.length === 0) return alert('データがありません。');
             let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-            csvContent += "試行ID,目標距離_m,投球力_px,作業標準_制限値,ガイド幅,発射角度_deg,室温_℃,コイン重さ_g,床傾き_deg,摩擦係数,到達距離_横_m,直線距離_斜め_m,横ズレ量_m,ハウスイン判定\n";
+            csvContent += "試行ID,目標距離_m,投球力_px,作業標準_制限値,ガイド幅,発射角度_deg,室温_℃,コイン重さ_g,摩擦係数,到達距離_横_m,直線距離_斜め_m,横ズレ量_m,ハウスイン判定\n";
 
             historyData.forEach(r => {
-                csvContent += `${r.trial},${r.target},${r.force},${r.forceLimit},${r.guide},${r.angle},${r.temp},${r.weight},${r.tilt},${r.friction},${r.distanceX},${r.distanceDiag},${r.diffDist},${r.houseIn}\n`;
+                csvContent += `${r.trial},${r.target},${r.force},${r.forceLimit},${r.guide},${r.angle},${r.temp},${r.weight},${r.friction},${r.distanceX},${r.distanceDiag},${r.diffDist},${r.houseIn}\n`;
             });
 
             const link = document.createElement("a");
@@ -440,7 +423,7 @@
         }
 
         // 初期化
-        ['force', 'guide', 'temp', 'weight', 'tilt'].forEach(p => toggleParam(p));
+        ['force', 'guide', 'temp', 'weight'].forEach(p => toggleParam(p));
         drawRink();
     </script>
 </body>
