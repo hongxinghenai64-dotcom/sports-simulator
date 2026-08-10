@@ -276,15 +276,15 @@
 
             const temp = document.getElementById('chk-temp').checked 
                 ? parseFloat(document.getElementById('param-temp').value)
-                : Math.floor(Math.random() * 11) + 10; // 10〜20℃
+                : Math.floor(Math.random() * 11) + 10;
 
             const weight = document.getElementById('chk-weight').checked 
                 ? parseFloat(document.getElementById('param-weight').value)
-                : Math.floor(Math.random() * 11) + 10; // 10〜20g
+                : Math.floor(Math.random() * 11) + 10;
 
             const tilt = document.getElementById('chk-tilt').checked 
                 ? parseFloat(document.getElementById('param-tilt').value)
-                : (Math.floor(Math.random() * 13) - 6) / 2; // -3.0〜+3.0°
+                : (Math.floor(Math.random() * 13) - 6) / 2;
 
             if (!document.getElementById('chk-temp').checked) {
                 document.getElementById('param-temp').value = temp;
@@ -316,12 +316,14 @@
             let vx = Math.cos(angleRad) * initialSpeed;
             let vy = Math.sin(angleRad) * initialSpeed;
 
-            const slopeAccelX = tilt * 0.0008; 
+            // 勾配による影響（バランス調整）
+            const slopeAccelX = tilt * 0.0004; 
             let isOutOfBounds = false;
 
             function animate() {
-                posX += vx * 10;
-                posY += vy * 10;
+                // 移動ステップを高速化 (35px/フレームで素早く到達)
+                posX += vx * 35;
+                posY += vy * 35;
 
                 vx += slopeAccelX;
 
@@ -336,7 +338,8 @@
                 ctx.beginPath(); ctx.arc(posX, posY, launcher.stoneRadius, 0, Math.PI * 2);
                 ctx.fillStyle = '#800000'; ctx.fill();
 
-                if (Math.hypot(vx, vy) > 0.01 && posX < RINK_END_X && !isOutOfBounds) {
+                // 速度閾値を 0.08 に上げてダラダラ滑る時間をカット
+                if (Math.hypot(vx, vy) > 0.08 && posX < RINK_END_X && !isOutOfBounds) {
                     requestAnimationFrame(animate);
                 } else {
                     trialCount++;
@@ -376,7 +379,6 @@
                     };
                     historyData.push(record);
 
-                    // テーブル更新（摩擦カラムを追加）
                     const tbody = document.getElementById('data-table');
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
