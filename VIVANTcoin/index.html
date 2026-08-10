@@ -25,13 +25,13 @@
         .btn-reset { background-color: #64748b; color: white; }
         .btn-reset:hover { background-color: #475569; }
         
-        .table-container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 720px; max-height: 250px; overflow-y: auto; }
+        .table-container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 820px; max-height: 250px; overflow-y: auto; }
         table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: center; }
         th, td { padding: 6px 6px; border: 1px solid #cbd5e1; }
         th { background-color: #f1f5f9; font-weight: bold; position: sticky; top: 0; }
         
         .desc-box { background: #eff6ff; border-left: 4px solid #2563eb; padding: 10px 15px; border-radius: 4px; font-size: 13px; margin-bottom: 15px; }
-        .disabled-input { opacity: 0.4; pointer-events: none; }
+        .disabled-input { opacity: 0.3; pointer-events: none; }
     </style>
 </head>
 <body>
@@ -50,28 +50,35 @@
             <input type="checkbox" id="chk-force" onchange="toggleParam('force')">
             <label for="chk-force">投球力制限</label>
             <input type="range" id="param-force" min="40" max="160" value="120" oninput="updateVal('force')" class="disabled-input">
-            <span id="val-force" class="val-box disabled-input">120</span>
+            <span id="val-force" class="val-box disabled-input">-</span>
         </div>
 
         <div class="control-item">
             <input type="checkbox" id="chk-guide" onchange="toggleParam('guide')">
             <label for="chk-guide">ガイド幅</label>
             <input type="range" id="param-guide" min="1" max="50" value="35" oninput="updateVal('guide')" class="disabled-input">
-            <span id="val-guide" class="val-box disabled-input">35</span>
+            <span id="val-guide" class="val-box disabled-input">-</span>
         </div>
 
         <div class="control-item">
             <input type="checkbox" id="chk-temp" onchange="toggleParam('temp')">
             <label for="chk-temp">🌡 室温(℃)</label>
             <input type="range" id="param-temp" min="0" max="30" value="15" step="1" oninput="updateVal('temp')" class="disabled-input">
-            <span id="val-temp" class="val-box disabled-input">15℃</span>
+            <span id="val-temp" class="val-box disabled-input">-</span>
         </div>
 
         <div class="control-item">
             <input type="checkbox" id="chk-weight" onchange="toggleParam('weight')">
             <label for="chk-weight">⚖ 重さ(g)</label>
             <input type="range" id="param-weight" min="5" max="30" value="15" step="1" oninput="updateVal('weight')" class="disabled-input">
-            <span id="val-weight" class="val-box disabled-input">15g</span>
+            <span id="val-weight" class="val-box disabled-input">-</span>
+        </div>
+
+        <div class="control-item">
+            <input type="checkbox" id="chk-fric" onchange="toggleParam('fric')">
+            <label for="chk-fric">🧊 摩擦係数</label>
+            <input type="range" id="param-fric" min="0.005" max="0.080" value="0.030" step="0.001" oninput="updateVal('fric')" class="disabled-input">
+            <span id="val-fric" class="val-box disabled-input">-</span>
         </div>
     </div>
 
@@ -94,6 +101,7 @@
                             <th>角度(°)</th>
                             <th>室温</th>
                             <th>重さ</th>
+                            <th>摩擦係数</th>
                             <th>到達(横)</th>
                             <th>直線(斜め)</th>
                             <th>成功</th>
@@ -127,24 +135,36 @@
         function calcLimitXFromPower(power) { return launcher.restX - (power / 1.6); }
 
         function updateVal(param) {
+            const chk = document.getElementById(`chk-${param}`);
             const el = document.getElementById(`param-${param}`);
+            const valBox = document.getElementById(`val-${param}`);
+
+            if (!chk.checked) {
+                valBox.innerText = "-";
+                return;
+            }
+
             let unit = "";
             if(param === 'temp') unit = "℃";
             if(param === 'weight') unit = "g";
-            document.getElementById(`val-${param}`).innerText = el.value + unit;
+            
+            valBox.innerText = el.value + unit;
             drawRink();
         }
 
         function toggleParam(param) {
             const chk = document.getElementById(`chk-${param}`);
             const slider = document.getElementById(`param-${param}`);
-            const val = document.getElementById(`val-${param}`);
+            const valBox = document.getElementById(`val-${param}`);
+            
             if (chk.checked) {
                 slider.classList.remove('disabled-input');
-                val.classList.remove('disabled-input');
+                valBox.classList.remove('disabled-input');
+                updateVal(param);
             } else {
                 slider.classList.add('disabled-input');
-                val.classList.add('disabled-input');
+                valBox.classList.add('disabled-input');
+                valBox.innerText = "-";
             }
             drawRink();
         }
@@ -264,7 +284,7 @@
             const isGuide = document.getElementById('chk-guide').checked;
             const isForceLimit = document.getElementById('chk-force').checked;
 
-            // チェックが無ければランダム生成
+            // チェックが無ければランダム生成（記録用）
             const temp = document.getElementById('chk-temp').checked 
                 ? parseFloat(document.getElementById('param-temp').value)
                 : Math.floor(Math.random() * 11) + 10; // 10〜20℃
@@ -273,23 +293,16 @@
                 ? parseFloat(document.getElementById('param-weight').value)
                 : Math.floor(Math.random() * 11) + 10; // 10〜20g
 
-            // UI反映
-            if (!document.getElementById('chk-temp').checked) {
-                document.getElementById('param-temp').value = temp;
-                document.getElementById('val-temp').innerText = temp + "℃";
-            }
-            if (!document.getElementById('chk-weight').checked) {
-                document.getElementById('param-weight').value = weight;
-                document.getElementById('val-weight').innerText = weight + "g";
-            }
+            // 摩擦係数：固定値指定があればそれを優先、無ければ室温と重さから計算
+            let baseFriction = document.getElementById('chk-fric').checked
+                ? parseFloat(document.getElementById('param-fric').value)
+                : 0.045 - (temp * 0.001) + (weight * 0.0005);
+            
+            baseFriction = Math.max(0.005, baseFriction);
 
             const dx = launcher.restX - dragX;
             const dy = dragY - launcher.restY;
             const actualPower = calcPowerFromDx(dx);
-
-            // 物理計算：温度が高いと摩擦低下、重いと摩擦増加
-            let baseFriction = 0.045 - (temp * 0.001) + (weight * 0.0005);
-            baseFriction = Math.max(0.005, baseFriction);
 
             const angleRad = Math.atan2(-dy, dx);
             const angleDeg = parseFloat((angleRad * (180 / Math.PI)).toFixed(2));
@@ -366,6 +379,7 @@
                         <td>${record.angle}°</td>
                         <td>${record.temp}℃</td>
                         <td>${record.weight}g</td>
+                        <td>${record.friction}</td>
                         <td><strong style="${displayX === 'NA' ? 'color:#ef4444;' : ''}">${record.distanceX}</strong></td>
                         <td><strong style="${displayDiag === 'NA' ? 'color:#ef4444;' : ''}">${record.distanceDiag}</strong></td>
                         <td>${record.houseIn === 1 ? '◯' : '×'}</td>
@@ -405,7 +419,7 @@
         }
 
         // 初期化
-        ['force', 'guide', 'temp', 'weight'].forEach(p => toggleParam(p));
+        ['force', 'guide', 'temp', 'weight', 'fric'].forEach(p => toggleParam(p));
         drawRink();
     </script>
 </body>
