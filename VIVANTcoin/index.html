@@ -219,7 +219,7 @@
 
             dragX = Math.min(launcher.restX, Math.max(minX, mousePos.x));
             const isGuide = document.getElementById('chk-guide').checked;
-            const guideVal = isGuide ? parseFloat(document.getElementById('param-guide').value) : 50;
+            const guideVal = isGuide ? parseFloat(document.getElementById('param-guide').value) : 35;
             const maxYSpread = (guideVal - 1) / 49 * 60; 
             dragY = Math.min(launcher.restY + maxYSpread, Math.max(launcher.restY - maxYSpread, mousePos.y));
 
@@ -237,7 +237,7 @@
         function getDistanceFromX(x) { return x < launcher.restX ? 0 : (x - launcher.restX) * (MAX_DISTANCE_MM / (RINK_END_X - launcher.restX)); }
         function getActualDistance(x, y) {
             const pxPerMM = (RINK_END_X - launcher.restX) / MAX_DISTANCE_MM;
-            return Math.hypot(x - launcher.restX, (y - launcher.restY) * 2.2) / pxPerMM;
+            return Math.hypot(x - launcher.restX, y - launcher.restY) / pxPerMM;
         }
 
         function drawRink() {
@@ -342,7 +342,8 @@
             let dy = overrideDy !== null ? overrideDy : (dragY - launcher.restY);
             const actualPower = calcPowerFromDx(dx);
 
-            const noiseEffect = (noise - 40) / 40 * (Math.random() - 0.5) * 4;
+            // 騒音の影響を控えめに（角度ブレを大きくしすぎない）
+            const noiseEffect = (noise - 40) / 40 * (Math.random() - 0.5) * 1.0;
             dy += noiseEffect;
 
             const angleRad = Math.atan2(-dy, dx);
@@ -392,9 +393,14 @@
                         let distX = getDistanceFromX(posX);
                         let distDiag = getActualDistance(posX, posY);
 
+                        // 1mmあたりのピクセル数
+                        const pxPerMM = (RINK_END_X - launcher.restX) / MAX_DISTANCE_MM;
+                        // 中心線（launcher.restY）からの垂直離れ具合（ミリメートル単位）
+                        let sideDeviation = (posY - launcher.restY) / pxPerMM;
+
                         let displayX = distX.toFixed(3);
                         let displayDiag = distDiag.toFixed(3);
-                        let diffDist = (distDiag - distX).toFixed(3);
+                        let displayDev = sideDeviation.toFixed(3);
 
                         let moveTimeSeconds = (frameCount * 0.045).toFixed(2);
 
@@ -404,11 +410,10 @@
                         
                         const isSuccess = (Math.hypot(posX - houseX, posY - houseY) <= pxPer100mm) ? '成功' : '失敗';
 
-                        // 表記を NA から「測定不能」に変更
                         if (distDiag > MAX_DISTANCE_MM || isOutOfBounds) {
                             displayX = '測定不能'; 
                             displayDiag = '測定不能'; 
-                            diffDist = '測定不能';
+                            displayDev = '測定不能';
                         } else {
                             stoneHits.push({ x: posX, y: posY });
                         }
@@ -418,7 +423,7 @@
                             coinCondition: currentCondition,
                             force: actualPower,
                             forceLimit: isForceLimit ? parseFloat(document.getElementById('param-force').value) : "-",
-                            guide: isGuide ? parseFloat(document.getElementById('param-guide').value) : 50,
+                            guide: isGuide ? parseFloat(document.getElementById('param-guide').value) : "-",
                             angle: angleDeg,
                             noise: noise,
                             temp: temp,
@@ -429,7 +434,7 @@
                             moveTime: moveTimeSeconds,
                             distanceX: displayX,
                             distanceDiag: displayDiag,
-                            diffDist: diffDist,
+                            sideDev: displayDev,
                             houseIn: isSuccess
                         };
                         historyData.push(record);
@@ -453,7 +458,7 @@
                             <td>${record.moveTime}</td>
                             <td><strong style="${displayX === '測定不能' ? 'color:#ef4444;' : ''}">${record.distanceX}</strong></td>
                             <td><strong style="${displayDiag === '測定不能' ? 'color:#ef4444;' : ''}">${record.distanceDiag}</strong></td>
-                            <td>${record.diffDist}</td>
+                            <td><strong style="${displayDev === '測定不能' ? 'color:#ef4444;' : ''}">${record.sideDev}</strong></td>
                             <td>${record.houseIn}</td>
                         `;
                         tbody.insertBefore(tr, tbody.firstChild);
@@ -486,8 +491,11 @@
                 const randomDx = Math.random() * (maxDx - minDx) + minDx;
 
                 const isGuide = document.getElementById('chk-guide').checked;
-                const guideVal = isGuide ? parseFloat(document.getElementById('param-guide').value) : 50;
-                const maxYSpread = (guideVal - 1) / 49 * 60;
+                const guideVal = isGuide ? parseFloat(document.getElementById('param-guide').value) : 35;
+                
+                // ガイド幅（cm）に応じた上下ブレの拡大倍率（ガイドが狭いほど直線的になる）
+                // 角度ブレが大きすぎないよう調整（最大でも±12px程度に制限）
+                const maxYSpread = (guideVal / 50) * 12;
                 const randomDy = (Math.random() * 2 - 1) * maxYSpread;
 
                 await shootStone(randomDx, randomDy, true);
@@ -510,7 +518,7 @@
             csvContent += "試行回数,コインの状態,引き量(mm),引き量制限(mm),ガイド幅(cm),角度(°),騒音レベル(dB),室温(℃),湿度(%),天気,コイン重さ(g),摩擦係数,移動時間(秒),到達距離_横(mm),直線距離_斜め(mm),横ズレ(mm),ハウスイン判定\n";
 
             historyData.forEach(r => {
-                csvContent += `${r.trial},${r.coinCondition},${r.force},${r.forceLimit},${r.guide},${r.angle},${r.noise},${r.temp},${r.humidity},${r.weather},${r.weight},${r.friction},${r.moveTime},${r.distanceX},${r.distanceDiag},${r.diffDist},${r.houseIn}\n`;
+                csvContent += `${r.trial},${r.coinCondition},${r.force},${r.forceLimit},${r.guide},${r.angle},${r.noise},${r.temp},${r.humidity},${r.weather},${r.weight},${r.friction},${r.moveTime},${r.distanceX},${r.distanceDiag},${r.sideDev},${r.houseIn}\n`;
             });
 
             const link = document.createElement("a");
