@@ -349,15 +349,16 @@
             let dy = overrideDy !== null ? overrideDy : (dragY - launcher.restY);
             const actualPower = calcPowerFromDx(dx);
 
-            // 心拍数の計算ロジック（直前の成功/失敗・引き量に連動、エラー・誤差レベルのブレにのみ影響）
-            if (lastResult === '失敗') {
-                currentHeartRate = Math.min(135, currentHeartRate + Math.floor(Math.random() * 12) + 5);
-            } else {
-                currentHeartRate = Math.max(65, currentHeartRate - Math.floor(Math.random() * 8) - 2);
-            }
-            // 引き量に応じた微小な負荷
-            let heartRateVal = Math.round(currentHeartRate + (dx * 0.1) + (Math.random() * 6 - 3));
-            heartRateVal = Math.min(145, Math.max(60, heartRateVal));
+            // 心拍数の計算ロジック（「本来の平常値（75bpm）」に戻ろうとする復元力を追加）
+            const targetHR = 75;
+            let hrDiff = targetHR - currentHeartRate;
+            // 失敗すると少し上がるが、基本は平常値へ引き戻される（ホメオスタシス）
+            let change = hrDiff * 0.2 + (lastResult === '失敗' ? (Math.random() * 6 + 2) : -(Math.random() * 6 + 2));
+                currentHeartRate += change;
+                currentHeartRate = Math.min(110, Math.max(65, currentHeartRate)); // マックスでも110前後（少し緊張した状態）で留める
+
+            let heartRateVal = Math.round(currentHeartRate + (Math.random() * 8 - 4));
+                heartRateVal = Math.min(115, Math.max(62, heartRateVal));
 
             // 到達距離への影響はほぼなく、角度の微小なブレ（横ズレ）にほんの少しだけ影響（誤差レベル）
             let hrEffect = (heartRateVal - 75) * 0.02 * (Math.random() - 0.5);
