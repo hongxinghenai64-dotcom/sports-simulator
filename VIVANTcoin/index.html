@@ -118,6 +118,8 @@
                             <th>天気</th>
                             <th>重さ(g)</th>
                             <th>摩擦係数</th>
+                            <th>心拍数(bpm)</th>
+                            <th>連続成功</th>
                             <th>移動時間(秒)</th>
                             <th>到達[横](mm)</th>
                             <th>直線[斜め](mm)</th>
@@ -139,6 +141,11 @@
         let trialCount = 0;
         let historyData = [];
         let stoneHits = [];
+        
+        // メンタル・状態管理用変数
+        let currentHeartRate = 75;
+        let currentStreak = 0;
+        let lastResult = '成功'; // 初期値
 
         const launcher = { x: 20, y: 50, width: 130, height: 160, stoneRadius: 10, restX: 130, restY: 130 };
         const MAX_DISTANCE_MM = 2300;
@@ -342,9 +349,19 @@
             let dy = overrideDy !== null ? overrideDy : (dragY - launcher.restY);
             const actualPower = calcPowerFromDx(dx);
 
-            // 騒音の影響を控えめに（角度ブレを大きくしすぎない）
-            const noiseEffect = (noise - 40) / 40 * (Math.random() - 0.5) * 1.0;
-            dy += noiseEffect;
+            // 心拍数の計算ロジック（直前の成功/失敗・引き量に連動、エラー・誤差レベルのブレにのみ影響）
+            if (lastResult === '失敗') {
+                currentHeartRate = Math.min(135, currentHeartRate + Math.floor(Math.random() * 12) + 5);
+            } else {
+                currentHeartRate = Math.max(65, currentHeartRate - Math.floor(Math.random() * 8) - 2);
+            }
+            // 引き量に応じた微小な負荷
+            let heartRateVal = Math.round(currentHeartRate + (dx * 0.1) + (Math.random() * 6 - 3));
+            heartRateVal = Math.min(145, Math.max(60, heartRateVal));
+
+            // 到達距離への影響はほぼなく、角度の微小なブレ（横ズレ）にほんの少しだけ影響（誤差レベル）
+            let hrEffect = (heartRateVal - 75) * 0.02 * (Math.random() - 0.5);
+            dy += hrEffect;
 
             const angleRad = Math.atan2(-dy, dx);
             const angleDeg = parseFloat((angleRad * (180 / Math.PI)).toFixed(2));
@@ -360,7 +377,7 @@
 
             return new Promise((resolve) => {
                 function animate() {
-                    const stepCount = isFast ? 10 : 1; // 自動実行時は高速化
+                    const stepCount = isFast ? 10 : 1; 
                     for(let i = 0; i < stepCount; i++) {
                         frameCount++;
                         posX += vx * 10;
@@ -393,9 +410,7 @@
                         let distX = getDistanceFromX(posX);
                         let distDiag = getActualDistance(posX, posY);
 
-                        // 1mmあたりのピクセル数
                         const pxPerMM = (RINK_END_X - launcher.restX) / MAX_DISTANCE_MM;
-                        // 中心線（launcher.restY）からの垂直離れ具合（ミリメートル単位）
                         let sideDeviation = (posY - launcher.restY) / pxPerMM;
 
                         let displayX = distX.toFixed(3);
@@ -409,6 +424,14 @@
                         const pxPer100mm = (RINK_END_X - launcher.restX) / (MAX_DISTANCE_MM / 100);
                         
                         const isSuccess = (Math.hypot(posX - houseX, posY - houseY) <= pxPer100mm) ? '成功' : '失敗';
+                        
+                        // 連続成功記録の更新
+                        if (isSuccess === '成功') {
+                            currentStreak++;
+                        } else {
+                            currentStreak = 0;
+                        }
+                        lastResult = isSuccess;
 
                         if (distDiag > MAX_DISTANCE_MM || isOutOfBounds) {
                             displayX = '測定不能'; 
@@ -431,6 +454,8 @@
                             weather: currentWeather,
                             weight: weight,
                             friction: baseFriction.toFixed(4),
+                            heartRate: heartRateVal,
+                            streak: currentStreak,
                             moveTime: moveTimeSeconds,
                             distanceX: displayX,
                             distanceDiag: displayDiag,
@@ -455,6 +480,8 @@
                             <td>${record.weather}</td>
                             <td>${record.weight}</td>
                             <td>${record.friction}</td>
+                            <td>${record.heartRate}</td>
+                            <td>${record.streak}</td>
                             <td>${record.moveTime}</td>
                             <td><strong style="${displayX === '測定不能' ? 'color:#ef4444;' : ''}">${record.distanceX}</strong></td>
                             <td><strong style="${displayDiag === '測定不能' ? 'color:#ef4444;' : ''}">${record.distanceDiag}</strong></td>
@@ -481,20 +508,17 @@
             btn.innerText = "実行中...";
 
             for (let i = 0; i < count; i++) {
-                // 自動実行用のランダムな引っ張り（引き量・角度）の生成
-                let minDx = 25; // 約40mm相当
+                let minDx = 25; 
                 if (document.getElementById('chk-force').checked) {
                     const limitVal = parseFloat(document.getElementById('param-force').value);
                     minDx = limitVal / 1.6;
                 }
-                const maxDx = 100; // 約160mm相当
+                const maxDx = 100; 
                 const randomDx = Math.random() * (maxDx - minDx) + minDx;
 
                 const isGuide = document.getElementById('chk-guide').checked;
                 const guideVal = isGuide ? parseFloat(document.getElementById('param-guide').value) : 35;
                 
-                // ガイド幅（cm）に応じた上下ブレの拡大倍率（ガイドが狭いほど直線的になる）
-                // 角度ブレが大きすぎないよう調整（最大でも±12px程度に制限）
                 const maxYSpread = (guideVal / 50) * 12;
                 const randomDy = (Math.random() * 2 - 1) * maxYSpread;
 
@@ -506,13 +530,10 @@
         }
 
         function resetData() {
-            // データが存在する場合のみ確認ダイアログを表示
             if (historyData.length > 0) {
                 const isConfirmed = confirm(
                     `これまでの試行データ（${historyData.length}件）がすべて消去されます。\n本当にリセットしますか？`
                 );
-                
-                // キャンセルされた場合は処理を中断
                 if (!isConfirmed) {
                     return;
                 }
@@ -521,6 +542,9 @@
             trialCount = 0; 
             historyData = []; 
             stoneHits = [];
+            currentHeartRate = 75;
+            currentStreak = 0;
+            lastResult = '成功';
             dragX = launcher.restX; 
             dragY = launcher.restY;
             document.getElementById('data-table').innerHTML = '';
@@ -530,10 +554,10 @@
         function downloadCSV() {
             if (historyData.length === 0) return alert('データがありません。');
             let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-            csvContent += "試行回数,コインの状態,引き量(mm),引き量制限(mm),ガイド幅(cm),角度(°),騒音レベル(dB),室温(℃),湿度(%),天気,コイン重さ(g),摩擦係数,移動時間(秒),到達距離_横(mm),直線距離_斜め(mm),横ズレ(mm),ハウスイン判定\n";
+            csvContent += "試行回数,コインの状態,引き量(mm),引き量制限(mm),ガイド幅(cm),角度(°),騒音レベル(dB),室温(℃),湿度(%),天気,コイン重さ(g),摩擦係数,心拍数(bpm),連続成功,移動時間(秒),到達距離_横(mm),直線距離_斜め(mm),横ズレ(mm),ハウスイン判定\n";
 
             historyData.forEach(r => {
-                csvContent += `${r.trial},${r.coinCondition},${r.force},${r.forceLimit},${r.guide},${r.angle},${r.noise},${r.temp},${r.humidity},${r.weather},${r.weight},${r.friction},${r.moveTime},${r.distanceX},${r.distanceDiag},${r.sideDev},${r.houseIn}\n`;
+                csvContent += `${r.trial},${r.coinCondition},${r.force},${r.forceLimit},${r.guide},${r.angle},${r.noise},${r.temp},${r.humidity},${r.weather},${r.weight},${r.friction},${r.heartRate},${r.streak},${r.moveTime},${r.distanceX},${r.distanceDiag},${r.sideDev},${r.houseIn}\n`;
             });
 
             const link = document.createElement("a");
