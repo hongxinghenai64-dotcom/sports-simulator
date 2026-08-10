@@ -24,8 +24,8 @@
         .btn-csv:hover { background-color: #4f46e5; }
         .btn-auto { background-color: #10b981; color: white; }
         .btn-auto:hover { background-color: #059669; }
-        .btn-reset { background-color: #64748b; color: white; }
-        .btn-reset:hover { background-color: #475569; }
+        .btn-reset { background-color: #ef4444; color: white; }
+        .btn-reset:hover { background-color: #dc2626; }
         
         .auto-box { display: flex; align-items: center; gap: 8px; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 6px 12px; border-radius: 6px; }
         
@@ -506,8 +506,23 @@
         }
 
         function resetData() {
-            trialCount = 0; historyData = []; stoneHits = [];
-            dragX = launcher.restX; dragY = launcher.restY;
+            // データが存在する場合のみ確認ダイアログを表示
+            if (historyData.length > 0) {
+                const isConfirmed = confirm(
+                    `これまでの試行データ（${historyData.length}件）がすべて消去されます。\n本当にリセットしますか？`
+                );
+                
+                // キャンセルされた場合は処理を中断
+                if (!isConfirmed) {
+                    return;
+                }
+            }
+
+            trialCount = 0; 
+            historyData = []; 
+            stoneHits = [];
+            dragX = launcher.restX; 
+            dragY = launcher.restY;
             document.getElementById('data-table').innerHTML = '';
             drawRink();
         }
