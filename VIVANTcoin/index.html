@@ -41,7 +41,7 @@
     <div class="desc-box">
         <strong>【遊び方】</strong><br>
         チェックボックスが外れている項目は、試行ごとに<strong>ランダムな値</strong>で変動します。<br>
-        室温や重さによって変化する「摩擦係数」と飛距離の関係も画面下のデータテーブルから確認できます。
+        床の傾きは「前後（坂道）」のイメージで、上り坂（マイナス）だと減速しやすく、下り坂（プラス）だと遠くまで伸びます。
     </div>
 
     <!-- 設定パネル -->
@@ -303,7 +303,7 @@
             const dy = dragY - launcher.restY;
             const actualPower = calcPowerFromDx(dx);
 
-            // 物理計算：摩擦係数
+            // 元コードと全く同じ物理計算式
             let baseFriction = 0.045 - (temp * 0.001) + (weight * 0.0005);
             baseFriction = Math.max(0.005, baseFriction);
 
@@ -316,21 +316,34 @@
             let vx = Math.cos(angleRad) * initialSpeed;
             let vy = Math.sin(angleRad) * initialSpeed;
 
-            // 勾配による影響（バランス調整）
-            const slopeAccelX = tilt * 0.0004; 
+            const slopeAccelX = tilt * 0.0008; 
             let isOutOfBounds = false;
 
             function animate() {
-                // 移動ステップを高速化 (35px/フレームで素早く到達)
-                posX += vx * 35;
-                posY += vy * 35;
+                // 1回の描画フレーム内で5ステップ分物理計算を進める（計算精度は元のまま高速化）
+                const STEPS_PER_FRAME = 5;
+                let isStopped = false;
 
-                vx += slopeAccelX;
+                for (let i = 0; i < STEPS_PER_FRAME; i++) {
+                    posX += vx * 10; // 元の移動倍率（10）を維持
+                    posY += vy * 10;
 
-                vx *= (1 - baseFriction);
-                vy *= (1 - baseFriction);
+                    vx += slopeAccelX;
+                    vx *= (1 - baseFriction);
+                    vy *= (1 - baseFriction);
 
-                if (posY < 0 || posY > canvas.height) isOutOfBounds = true;
+                    if (posY < 0 || posY > canvas.height) {
+                        isOutOfBounds = true;
+                        isStopped = true;
+                        break;
+                    }
+
+                    // 停止判定（元コードと同じ条件）
+                    if (Math.hypot(vx, vy) <= 0.01 || posX >= RINK_END_X) {
+                        isStopped = true;
+                        break;
+                    }
+                }
 
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 drawRink();
@@ -338,8 +351,7 @@
                 ctx.beginPath(); ctx.arc(posX, posY, launcher.stoneRadius, 0, Math.PI * 2);
                 ctx.fillStyle = '#800000'; ctx.fill();
 
-                // 速度閾値を 0.08 に上げてダラダラ滑る時間をカット
-                if (Math.hypot(vx, vy) > 0.08 && posX < RINK_END_X && !isOutOfBounds) {
+                if (!isStopped) {
                     requestAnimationFrame(animate);
                 } else {
                     trialCount++;
