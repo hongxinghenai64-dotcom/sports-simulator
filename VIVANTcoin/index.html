@@ -25,7 +25,7 @@
         .btn-reset { background-color: #64748b; color: white; }
         .btn-reset:hover { background-color: #475569; }
         
-        .table-container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 750px; max-height: 250px; overflow-y: auto; }
+        .table-container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 780px; max-height: 250px; overflow-y: auto; }
         table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: center; }
         th, td { padding: 6px 6px; border: 1px solid #cbd5e1; }
         th { background-color: #f1f5f9; font-weight: bold; position: sticky; top: 0; }
@@ -36,14 +36,15 @@
 </head>
 <body>
 
-    <h1>🥌 コイン射撃シミュレーター（多変数データ物理拡張版）</h1>
+    <h1>🥌 コイン射撃シミュレーター（探究学習版）</h1>
     
     <div class="desc-box">
         <strong>【遊び方】</strong><br>
-        発射台内のコインをマウスで引っ張って放します。室温・重さ・床の傾きなど様々な環境変数による挙動変化を解析できます。
+        チェックボックスが外れている項目は、試行ごとに<strong>ランダムな値</strong>で変動します。<br>
+        特定の条件を固定して回帰分析を行いたい場合は、チェックを入れて数値をスライダーで指定してください。
     </div>
 
-    <!-- 設定パネル -->
+    <!-- 設定パネル（初期状態は全チェックOFF＝ランダム） -->
     <div class="top-controls">
         <div class="control-item">
             <input type="checkbox" id="chk-force" onchange="toggleParam('force')">
@@ -60,21 +61,24 @@
         </div>
 
         <div class="control-item">
-            <label for="param-temp">🌡 室温(℃)</label>
-            <input type="range" id="param-temp" min="0" max="30" value="15" step="1" oninput="updateVal('temp')">
-            <span id="val-temp" class="val-box">15℃</span>
+            <input type="checkbox" id="chk-temp" onchange="toggleParam('temp')">
+            <label for="chk-temp">🌡 室温(℃)</label>
+            <input type="range" id="param-temp" min="0" max="30" value="15" step="1" oninput="updateVal('temp')" class="disabled-input">
+            <span id="val-temp" class="val-box disabled-input">15℃</span>
         </div>
 
         <div class="control-item">
-            <label for="param-weight">⚖ 重さ(g)</label>
-            <input type="range" id="param-weight" min="5" max="30" value="15" step="1" oninput="updateVal('weight')">
-            <span id="val-weight" class="val-box">15g</span>
+            <input type="checkbox" id="chk-weight" onchange="toggleParam('weight')">
+            <label for="chk-weight">⚖ 重さ(g)</label>
+            <input type="range" id="param-weight" min="5" max="30" value="15" step="1" oninput="updateVal('weight')" class="disabled-input">
+            <span id="val-weight" class="val-box disabled-input">15g</span>
         </div>
 
         <div class="control-item">
-            <label for="param-tilt">📐 床傾き(°)</label>
-            <input type="range" id="param-tilt" min="-5" max="5" value="0" step="0.5" oninput="updateVal('tilt')">
-            <span id="val-tilt" class="val-box">0°</span>
+            <input type="checkbox" id="chk-tilt" onchange="toggleParam('tilt')">
+            <label for="chk-tilt">📐 床傾き(°)</label>
+            <input type="range" id="param-tilt" min="-5" max="5" value="0" step="0.5" oninput="updateVal('tilt')" class="disabled-input">
+            <span id="val-tilt" class="val-box disabled-input">0°</span>
         </div>
     </div>
 
@@ -140,6 +144,7 @@
             drawRink();
         }
 
+        // チェックが入っている場合は固定（スライダー有効）、入っていない場合はランダム（スライダー無効）
         function toggleParam(param) {
             const chk = document.getElementById(`chk-${param}`);
             const slider = document.getElementById(`param-${param}`);
@@ -269,9 +274,32 @@
             const isGuide = document.getElementById('chk-guide').checked;
             const isForceLimit = document.getElementById('chk-force').checked;
 
-            const temp = parseFloat(document.getElementById('param-temp').value);
-            const weight = parseFloat(document.getElementById('param-weight').value);
-            const tilt = parseFloat(document.getElementById('param-tilt').value);
+            // チェックが無ければランダム生成（各項目の自然な範囲を設定）
+            const temp = document.getElementById('chk-temp').checked 
+                ? parseFloat(document.getElementById('param-temp').value)
+                : Math.floor(Math.random() * 11) + 10; // 10〜20℃
+
+            const weight = document.getElementById('chk-weight').checked 
+                ? parseFloat(document.getElementById('param-weight').value)
+                : Math.floor(Math.random() * 11) + 10; // 10〜20g
+
+            const tilt = document.getElementById('chk-tilt').checked 
+                ? parseFloat(document.getElementById('param-tilt').value)
+                : (Math.floor(Math.random() * 9) - 4) / 2; // -2.0〜+2.0°
+
+            // ランダムで決定した値を画面のUI表示にも反映（何℃で投げたか視覚的にわかる）
+            if (!document.getElementById('chk-temp').checked) {
+                document.getElementById('param-temp').value = temp;
+                document.getElementById('val-temp').innerText = temp + "℃";
+            }
+            if (!document.getElementById('chk-weight').checked) {
+                document.getElementById('param-weight').value = weight;
+                document.getElementById('val-weight').innerText = weight + "g";
+            }
+            if (!document.getElementById('chk-tilt').checked) {
+                document.getElementById('param-tilt').value = tilt;
+                document.getElementById('val-tilt').innerText = tilt + "°";
+            }
 
             const dx = launcher.restX - dragX;
             const dy = dragY - launcher.restY;
@@ -290,17 +318,14 @@
             let vx = Math.cos(angleRad) * initialSpeed;
             let vy = Math.sin(angleRad) * initialSpeed;
 
-            // 床の傾きによるY軸加速度
             const tiltAccel = tilt * 0.005;
-
             let isOutOfBounds = false;
 
             function animate() {
                 posX += vx * 10;
                 posY += vy * 10;
 
-                // 傾きによるY方向へのカーブ（重力）
-                vy += tiltAccel;
+                vy += tiltAccel; // 傾きによるY軸加速度
 
                 vx *= (1 - baseFriction);
                 vy *= (1 - baseFriction);
@@ -396,13 +421,15 @@
 
             const link = document.createElement("a");
             link.setAttribute("href", encodeURI(csvContent));
-            link.setAttribute("download", "coin_shooting_expanded_data.csv");
+            link.setAttribute("download", "coin_shooting_inquiry_data.csv");
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
         }
 
-        toggleParam('force'); toggleParam('guide'); drawRink();
+        // 初期化：すべてのコントロール状態を反映
+        ['force', 'guide', 'temp', 'weight', 'tilt'].forEach(p => toggleParam(p));
+        drawRink();
     </script>
 </body>
 </html>
