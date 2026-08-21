@@ -45,12 +45,11 @@
     
     <div class="desc-box">
         <strong>【使い方】</strong><br>
-        手動でドラッグして発射するか、下の「自動実行」でデータを集めることができます。<br>
-        「はじめから」を押すとデータがリセットされます。押すときは注意してください。<br>
-        データを集めたらCSV出力して分析をしてみよう。分析方法は、ワークシートを見てね。
+        チェックを入れた変数は、その設定値に固定されてシミュレーション（物理挙動・データ）に反映されます。<br>
+        チェックを外した変数は、毎回ランダムに変動します。
     </div>
 
-    <!-- 設定パネル（全カラム対応） -->
+    <!-- 設定パネル -->
     <div class="top-controls">
         <div class="control-item">
             <input type="checkbox" id="chk-force" onchange="toggleParam('force')">
@@ -395,6 +394,7 @@
         function shootStone(overrideDx = null, overrideDy = null, isFast = false) {
             isAnimating = true;
 
+            // 1. 各パラメータの決定（チェックがあれば固定値、なければランダム）
             const currentCondition = document.getElementById('chk-coinCondition').checked
                 ? document.getElementById('param-coinCondition').value
                 : coinConditionList[Math.floor(Math.random() * coinConditionList.length)];
@@ -438,22 +438,29 @@
             
             baseFriction = Math.max(0.005, baseFriction);
 
-            const dx = overrideDx !== null ? overrideDx : (launcher.restX - dragX);
-            let dy = overrideDy !== null ? overrideDy : (dragY - launcher.restY);
+            // 2. 引き量（パワー）の決定
+            let dx = overrideDx !== null ? overrideDx : (launcher.restX - dragX);
+            if (document.getElementById('chk-force').checked) {
+                const forcedPower = parseFloat(document.getElementById('param-force').value);
+                dx = forcedPower / 1.6; // 強制的にスライダーの引き量に置き換え
+            }
             const actualPower = calcPowerFromDx(dx);
 
+            // 心拍数
             const targetHR = 75;
             let hrDiff = targetHR - currentHeartRate;
             let change = hrDiff * 0.2 + (lastResult === '失敗' ? (Math.random() * 6 + 2) : -(Math.random() * 6 + 2));
             currentHeartRate += change;
             currentHeartRate = Math.min(110, Math.max(65, currentHeartRate));
+            
             let heartRateVal = document.getElementById('chk-heartRate').checked
                 ? parseFloat(document.getElementById('param-heartRate').value)
                 : Math.min(115, Math.max(62, Math.round(currentHeartRate + (Math.random() * 8 - 4))));
 
             let hrEffect = (heartRateVal - 75) * 0.02 * (Math.random() - 0.5);
-            dy += hrEffect;
+            let dy = overrideDy !== null ? overrideDy : (dragY - launcher.restY) + hrEffect;
 
+            // 3. 角度の決定
             let angleDeg = document.getElementById('chk-angle').checked
                 ? parseFloat(document.getElementById('param-angle').value)
                 : parseFloat((Math.atan2(-dy, dx) * (180 / Math.PI)).toFixed(2));
@@ -507,6 +514,7 @@
                         const pxPerMM = (RINK_END_X - launcher.restX) / MAX_DISTANCE_MM;
                         let sideDeviation = (posY - launcher.restY) / pxPerMM;
 
+                        // 4. 到達距離・横ズレの強制固定処理
                         if (document.getElementById('chk-distanceX').checked) distX = parseFloat(document.getElementById('param-distanceX').value);
                         if (document.getElementById('chk-distanceDiag').checked) distDiag = parseFloat(document.getElementById('param-distanceDiag').value);
                         if (document.getElementById('chk-sideDev').checked) sideDeviation = parseFloat(document.getElementById('param-sideDev').value);
@@ -515,10 +523,12 @@
                         let displayDiag = distDiag === '測定不能' ? '測定不能' : Number(distDiag).toFixed(3);
                         let displayDev = sideDeviation === '測定不能' ? '測定不能' : Number(sideDeviation).toFixed(3);
 
+                        // 5. 移動時間の固定処理
                         let moveTimeSeconds = document.getElementById('chk-moveTime').checked
                             ? parseFloat(document.getElementById('param-moveTime').value).toFixed(2)
                             : (frameCount * 0.045).toFixed(2);
 
+                        // 6. 連続成功の固定処理
                         if (document.getElementById('chk-streak').checked) {
                             currentStreak = parseInt(document.getElementById('param-streak').value);
                         }
