@@ -45,11 +45,11 @@
     
     <div class="desc-box">
         <strong>【使い方】</strong><br>
-        チェックを入れた変数は、その設定値に固定されてシミュレーション（物理挙動・データ）に反映されます。<br>
-        チェックを外した変数は、毎回ランダムに変動します。
+        チェックを入れた条件（原因系）は、その設定値に固定されてシミュレーションに反映されます。チェックなしの変数は毎回ランダムに変動します。<br>
+        到達距離や横ズレ、移動時間などはすべて<strong>物理演算による測定結果</strong>として自動で記録されます。
     </div>
 
-    <!-- 設定パネル -->
+    <!-- 設定パネル（原因系パラメータのみに絞り込み） -->
     <div class="top-controls">
         <div class="control-item">
             <input type="checkbox" id="chk-force" onchange="toggleParam('force')">
@@ -134,41 +134,6 @@
             <input type="range" id="param-heartRate" min="62" max="115" value="75" step="1" oninput="updateVal('heartRate')" class="disabled-input">
             <span id="val-heartRate" class="val-box disabled-input">-</span>
         </div>
-
-        <div class="control-item">
-            <input type="checkbox" id="chk-streak" onchange="toggleParam('streak')">
-            <label for="chk-streak">連続成功</label>
-            <input type="range" id="param-streak" min="0" max="20" value="0" step="1" oninput="updateVal('streak')" class="disabled-input">
-            <span id="val-streak" class="val-box disabled-input">-</span>
-        </div>
-
-        <div class="control-item">
-            <input type="checkbox" id="chk-moveTime" onchange="toggleParam('moveTime')">
-            <label for="chk-moveTime">移動時間(秒)</label>
-            <input type="range" id="param-moveTime" min="0.5" max="5.0" value="2.0" step="0.1" oninput="updateVal('moveTime')" class="disabled-input">
-            <span id="val-moveTime" class="val-box disabled-input">-</span>
-        </div>
-
-        <div class="control-item">
-            <input type="checkbox" id="chk-distanceX" onchange="toggleParam('distanceX')">
-            <label for="chk-distanceX">到達[横](mm)</label>
-            <input type="range" id="param-distanceX" min="100" max="2300" value="1200" step="50" oninput="updateVal('distanceX')" class="disabled-input">
-            <span id="val-distanceX" class="val-box disabled-input">-</span>
-        </div>
-
-        <div class="control-item">
-            <input type="checkbox" id="chk-distanceDiag" onchange="toggleParam('distanceDiag')">
-            <label for="chk-distanceDiag">直線[斜め](mm)</label>
-            <input type="range" id="param-distanceDiag" min="100" max="2300" value="1200" step="50" oninput="updateVal('distanceDiag')" class="disabled-input">
-            <span id="val-distanceDiag" class="val-box disabled-input">-</span>
-        </div>
-
-        <div class="control-item">
-            <input type="checkbox" id="chk-sideDev" onchange="toggleParam('sideDev')">
-            <label for="chk-sideDev">横ズレ(mm)</label>
-            <input type="range" id="param-sideDev" min="-60" max="60" value="0" step="1" oninput="updateVal('sideDev')" class="disabled-input">
-            <span id="val-sideDev" class="val-box disabled-input">-</span>
-        </div>
     </div>
 
     <div class="simulation-container">
@@ -243,7 +208,8 @@
         function calcPowerFromDx(dx) { return Math.round(dx * 1.6); }
         function calcLimitXFromPower(power) { return launcher.restX - (power / 1.6); }
 
-        const allParams = ['force', 'guide', 'coinCondition', 'angle', 'noise', 'temp', 'humidity', 'weather', 'weight', 'fric', 'heartRate', 'streak', 'moveTime', 'distanceX', 'distanceDiag', 'sideDev'];
+        // 原因系パラメータのみコントロール対象にする
+        const controlParams = ['force', 'guide', 'coinCondition', 'angle', 'noise', 'temp', 'humidity', 'weather', 'weight', 'fric', 'heartRate'];
 
         function updateVal(param) {
             const chk = document.getElementById(`chk-${param}`);
@@ -256,7 +222,7 @@
             }
 
             let unit = "";
-            if(param === 'force' || param === 'distanceX' || param === 'distanceDiag' || param === 'sideDev') unit = "mm";
+            if(param === 'force') unit = "mm";
             if(param === 'guide') unit = "cm";
             if(param === 'temp') unit = "℃";
             if(param === 'humidity') unit = "%";
@@ -264,7 +230,6 @@
             if(param === 'angle') unit = "°";
             if(param === 'noise') unit = "dB";
             if(param === 'heartRate') unit = "bpm";
-            if(param === 'moveTime') unit = "秒";
 
             valBox.innerText = el.value + unit;
             drawRink();
@@ -394,7 +359,6 @@
         function shootStone(overrideDx = null, overrideDy = null, isFast = false) {
             isAnimating = true;
 
-            // 1. 各パラメータの決定（チェックがあれば固定値、なければランダム）
             const currentCondition = document.getElementById('chk-coinCondition').checked
                 ? document.getElementById('param-coinCondition').value
                 : coinConditionList[Math.floor(Math.random() * coinConditionList.length)];
@@ -438,15 +402,13 @@
             
             baseFriction = Math.max(0.005, baseFriction);
 
-            // 2. 引き量（パワー）の決定
             let dx = overrideDx !== null ? overrideDx : (launcher.restX - dragX);
             if (document.getElementById('chk-force').checked) {
                 const forcedPower = parseFloat(document.getElementById('param-force').value);
-                dx = forcedPower / 1.6; // 強制的にスライダーの引き量に置き換え
+                dx = forcedPower / 1.6;
             }
             const actualPower = calcPowerFromDx(dx);
 
-            // 心拍数
             const targetHR = 75;
             let hrDiff = targetHR - currentHeartRate;
             let change = hrDiff * 0.2 + (lastResult === '失敗' ? (Math.random() * 6 + 2) : -(Math.random() * 6 + 2));
@@ -460,7 +422,6 @@
             let hrEffect = (heartRateVal - 75) * 0.02 * (Math.random() - 0.5);
             let dy = overrideDy !== null ? overrideDy : (dragY - launcher.restY) + hrEffect;
 
-            // 3. 角度の決定
             let angleDeg = document.getElementById('chk-angle').checked
                 ? parseFloat(document.getElementById('param-angle').value)
                 : parseFloat((Math.atan2(-dy, dx) * (180 / Math.PI)).toFixed(2));
@@ -508,29 +469,23 @@
                         }
                     } else {
                         trialCount++;
+                        
+                        // 全て純粋に物理演算から計測
                         let distX = getDistanceFromX(posX);
                         let distDiag = getActualDistance(posX, posY);
-
                         const pxPerMM = (RINK_END_X - launcher.restX) / MAX_DISTANCE_MM;
                         let sideDeviation = (posY - launcher.restY) / pxPerMM;
-
-                        // 4. 到達距離・横ズレの強制固定処理
-                        if (document.getElementById('chk-distanceX').checked) distX = parseFloat(document.getElementById('param-distanceX').value);
-                        if (document.getElementById('chk-distanceDiag').checked) distDiag = parseFloat(document.getElementById('param-distanceDiag').value);
-                        if (document.getElementById('chk-sideDev').checked) sideDeviation = parseFloat(document.getElementById('param-sideDev').value);
 
                         let displayX = distX === '測定不能' ? '測定不能' : Number(distX).toFixed(3);
                         let displayDiag = distDiag === '測定不能' ? '測定不能' : Number(distDiag).toFixed(3);
                         let displayDev = sideDeviation === '測定不能' ? '測定不能' : Number(sideDeviation).toFixed(3);
 
-                        // 5. 移動時間の固定処理
-                        let moveTimeSeconds = document.getElementById('chk-moveTime').checked
-                            ? parseFloat(document.getElementById('param-moveTime').value).toFixed(2)
-                            : (frameCount * 0.045).toFixed(2);
+                        let moveTimeSeconds = (frameCount * 0.045).toFixed(2);
 
-                        // 6. 連続成功の固定処理
-                        if (document.getElementById('chk-streak').checked) {
-                            currentStreak = parseInt(document.getElementById('param-streak').value);
+                        if (isSuccess === '成功') {
+                            currentStreak++;
+                        } else {
+                            currentStreak = 0;
                         }
 
                         const houseX = getXFromDistance(1700);
@@ -538,14 +493,6 @@
                         const pxPer100mm = (RINK_END_X - launcher.restX) / (MAX_DISTANCE_MM / 100);
                         
                         const isSuccess = (Math.hypot(posX - houseX, posY - houseY) <= pxPer100mm) ? '成功' : '失敗';
-                        
-                        if (!document.getElementById('chk-streak').checked) {
-                            if (isSuccess === '成功') {
-                                currentStreak++;
-                            } else {
-                                currentStreak = 0;
-                            }
-                        }
                         lastResult = isSuccess;
 
                         if (distDiag > MAX_DISTANCE_MM || isOutOfBounds) {
@@ -678,7 +625,7 @@
             document.body.removeChild(link);
         }
 
-        allParams.forEach(p => toggleParam(p));
+        controlParams.forEach(p => toggleParam(p));
         drawRink();
     </script>
 </body>
