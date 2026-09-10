@@ -330,13 +330,14 @@
                 ? parseFloat(document.getElementById('param-temp').value)
                 : Math.floor(Math.random() * 11) + 10;
 
+            // コインの状態・重さ・室温から摩擦係数を算出（修正箇所）
             let conditionFrictionAdd = 0;
-            if (currentCondition === 'やや汚れ') conditionFrictionAdd = 0.005;
-            if (currentCondition === '黒ずみ（古硬貨）') conditionFrictionAdd = 0.012;
+            if (currentCondition === 'やや汚れ') conditionFrictionAdd = 0.0040;
+            if (currentCondition === '黒ずみ（古硬貨）') conditionFrictionAdd = 0.0090;
 
             let baseFriction = document.getElementById('chk-fric').checked
                 ? parseFloat(document.getElementById('param-fric').value)
-                : 0.045 - (temp * 0.001) + (weight * 0.001) + conditionFrictionAdd;
+                : 0.038 - (temp * 0.0001) + (weight * 0.0008) + conditionFrictionAdd;
             
             baseFriction = Math.max(0.005, baseFriction);
 
