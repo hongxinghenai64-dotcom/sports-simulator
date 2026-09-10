@@ -269,6 +269,35 @@
             ctx.beginPath(); ctx.arc(houseX, houseY, outerRadius * 0.66, 0, Math.PI * 2); ctx.fillStyle = '#ffffff'; ctx.fill();
             ctx.beginPath(); ctx.arc(houseX, houseY, outerRadius * 0.33, 0, Math.PI * 2); ctx.fillStyle = '#2563eb'; ctx.fill();
 
+            // 分度器（放射状の角度目盛）の描画
+            ctx.save();
+            ctx.font = '10px sans-serif';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            const protractorRadius = 110;
+            const angles = [-30, -20, -10, 0, 10, 20, 30];
+
+            angles.forEach(deg => {
+                const rad = (deg * Math.PI) / 180;
+                const endX = launcher.restX + protractorRadius * Math.cos(rad);
+                const endY = launcher.restY + protractorRadius * Math.sin(rad);
+
+                ctx.beginPath();
+                ctx.moveTo(launcher.restX, launcher.restY);
+                ctx.lineTo(endX, endY);
+                ctx.strokeStyle = (deg === 0) ? 'rgba(30, 58, 138, 0.6)' : 'rgba(71, 85, 105, 0.35)';
+                ctx.lineWidth = (deg === 0) ? 1.5 : 1;
+                if (deg !== 0) ctx.setLineDash([3, 3]);
+                else ctx.setLineDash([]);
+                ctx.stroke();
+
+                const labelX = launcher.restX + (protractorRadius + 10) * Math.cos(rad);
+                const labelY = launcher.restY + (protractorRadius + 10) * Math.sin(rad);
+                ctx.fillStyle = '#1e293b';
+                ctx.fillText(`${deg}°`, labelX, labelY);
+            });
+            ctx.restore();
+
             // 発射台 & ガイド
             ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#475569'; ctx.lineWidth = 2;
             ctx.beginPath(); ctx.roundRect(launcher.x, launcher.y, launcher.width, launcher.height, 15); ctx.fill(); ctx.stroke();
