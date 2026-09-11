@@ -17,7 +17,18 @@
         .val-box { width: 65px; text-align: center; border: 1px solid #ccc; border-radius: 4px; padding: 3px; font-weight: bold; background: #f8fafc; font-size: 13px; }
         
         .simulation-container { display: flex; flex-direction: column; gap: 15px; }
-        canvas { background-color: #a5b4fc; border: 2px solid #6366f1; border-radius: 8px; width: 100%; max-width: 1200px; height: 260px; display: block; cursor: crosshair; }
+        
+        /* カーソルを黒色の明確なクロスヘア(SVG)に変更 */
+        canvas { 
+            background-color: #a5b4fc; 
+            border: 2px solid #6366f1; 
+            border-radius: 8px; 
+            width: 100%; 
+            max-width: 1200px; 
+            height: 260px; 
+            display: block; 
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%230f172a" stroke-width="2"><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/></svg>') 12 12, crosshair; 
+        }
         
         .bottom-area { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
         .btn-group { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
@@ -300,27 +311,27 @@
             });
             ctx.restore();
 
-            // 発射台 & ガイド
-            ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#475569'; ctx.lineWidth = 2;
+            // 発射台 & ガイド (白から落ち着いた濃いめの薄グレー #cbd5e1 に変更して視認性を向上)
+            ctx.fillStyle = '#cbd5e1'; ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 2;
             ctx.beginPath(); ctx.roundRect(launcher.x, launcher.y, launcher.width, launcher.height, 15); ctx.fill(); ctx.stroke();
 
             if (document.getElementById('chk-guide').checked) {
                 const spread = (parseFloat(document.getElementById('param-guide').value) - 1) / 49 * 60;
-                ctx.strokeStyle = '#2563eb'; ctx.lineWidth = 2;
+                ctx.strokeStyle = '#1d4ed8'; ctx.lineWidth = 2;
                 ctx.beginPath(); ctx.moveTo(launcher.x, launcher.restY - spread); ctx.lineTo(launcher.x + launcher.width, launcher.restY - spread); ctx.stroke();
                 ctx.beginPath(); ctx.moveTo(launcher.x, launcher.restY + spread); ctx.lineTo(launcher.x + launcher.width, launcher.restY + spread); ctx.stroke();
             }
 
             if (document.getElementById('chk-force').checked) {
                 const limitX = calcLimitXFromPower(parseFloat(document.getElementById('param-force').value));
-                ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 3;
+                ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 3;
                 ctx.beginPath(); ctx.moveTo(limitX, launcher.y + 5); ctx.lineTo(limitX, launcher.y + launcher.height - 5); ctx.stroke();
             }
 
             // コイン
             if (!isAnimating) {
                 if (isDragging) {
-                    ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 3;
+                    ctx.strokeStyle = '#d97706'; ctx.lineWidth = 3;
                     ctx.beginPath(); ctx.moveTo(launcher.restX, launcher.restY); ctx.lineTo(dragX, dragY); ctx.stroke();
                 }
                 ctx.beginPath(); ctx.arc(dragX, dragY, launcher.stoneRadius, 0, Math.PI * 2);
