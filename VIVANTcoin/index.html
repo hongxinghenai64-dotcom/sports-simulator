@@ -160,7 +160,7 @@
 
         const launcher = { x: 20, y: 50, width: 130, height: 160, stoneRadius: 10, restX: 130, restY: 130 };
         const MAX_DISTANCE_MM = 2300;
-        const RINK_END_X = 1180;
+        const RINK_END_X = 1150; // 右端目盛りの描画領域を確保するため調整
 
         let isDragging = false;
         let dragX = launcher.restX;
@@ -274,7 +274,6 @@
             }
 
             // --- Y軸目盛り（横ズレ定規：右端 & 左端） ---
-            // sideDeviation = (posY - launcher.restY) / pxPerMM と完全連動
             const pxPerMM = (RINK_END_X - launcher.restX) / MAX_DISTANCE_MM;
             const stepMM = 20; // 20mm刻みで線を描画
             const maxDevMM = Math.floor((canvas.height / 2) / pxPerMM);
@@ -302,7 +301,7 @@
                 const isMajor = (dev % 40 === 0); // 40mmごとに長い線と数字ラベル
                 const tickLength = isMajor ? 12 : 6;
 
-                // 右端目盛り
+                // 右端目盛り（目盛り線を左向きに伸ばす）
                 ctx.beginPath();
                 ctx.moveTo(rightRulerX, y);
                 ctx.lineTo(rightRulerX - tickLength, y);
@@ -318,11 +317,12 @@
 
                 // ラベル描画（40mm刻み）
                 if (isMajor) {
-                    ctx.textAlign = 'right';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(`${dev}`, rightRulerX - 15, y);
-
+                    // 右端：数字を定規の右側に表示
                     ctx.textAlign = 'left';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(`${dev}`, rightRulerX + 6, y);
+
+                    // 左端：数字を定規の右側に表示
                     ctx.fillText(`${dev}`, leftRulerX + 15, y);
                 }
             }
