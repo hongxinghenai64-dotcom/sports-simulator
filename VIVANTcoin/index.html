@@ -263,7 +263,7 @@
             ctx.fillStyle = '#a5b4fc';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 目盛り
+            // --- X軸目盛り（到達距離） ---
             ctx.strokeStyle = '#475569';
             ctx.fillStyle = '#0f172a';
             ctx.font = 'bold 11px sans-serif';
@@ -272,6 +272,61 @@
                 ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
                 if (mm % 200 === 0 || mm === 100) ctx.fillText(mm, x - 12, 15);
             }
+
+            // --- Y軸目盛り（横ズレ定規：右端 & 左端） ---
+            // sideDeviation = (posY - launcher.restY) / pxPerMM と完全連動
+            const pxPerMM = (RINK_END_X - launcher.restX) / MAX_DISTANCE_MM;
+            const stepMM = 20; // 20mm刻みで線を描画
+            const maxDevMM = Math.floor((canvas.height / 2) / pxPerMM);
+
+            ctx.save();
+            ctx.strokeStyle = '#1e293b';
+            ctx.fillStyle = '#0f172a';
+            ctx.font = '10px sans-serif';
+
+            const rightRulerX = RINK_END_X;
+            const leftRulerX = 10;
+
+            // 定規の縦軸ベース線
+            ctx.beginPath();
+            ctx.moveTo(rightRulerX, 0); ctx.lineTo(rightRulerX, canvas.height);
+            ctx.moveTo(leftRulerX, 0); ctx.lineTo(leftRulerX, canvas.height);
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // 定規の刻み線と数値ラベルの描画
+            for (let dev = -maxDevMM; dev <= maxDevMM; dev += stepMM) {
+                const y = launcher.restY + (dev * pxPerMM);
+                if (y < 0 || y > canvas.height) continue;
+
+                const isMajor = (dev % 40 === 0); // 40mmごとに長い線と数字ラベル
+                const tickLength = isMajor ? 12 : 6;
+
+                // 右端目盛り
+                ctx.beginPath();
+                ctx.moveTo(rightRulerX, y);
+                ctx.lineTo(rightRulerX - tickLength, y);
+                ctx.lineWidth = isMajor ? 1.5 : 1;
+                ctx.stroke();
+
+                // 左端目盛り
+                ctx.beginPath();
+                ctx.moveTo(leftRulerX, y);
+                ctx.lineTo(leftRulerX + tickLength, y);
+                ctx.lineWidth = isMajor ? 1.5 : 1;
+                ctx.stroke();
+
+                // ラベル描画（40mm刻み）
+                if (isMajor) {
+                    ctx.textAlign = 'right';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(`${dev}`, rightRulerX - 15, y);
+
+                    ctx.textAlign = 'left';
+                    ctx.fillText(`${dev}`, leftRulerX + 15, y);
+                }
+            }
+            ctx.restore();
 
             // ハウス（目標1700mm）
             const houseX = getXFromDistance(1700);
@@ -311,7 +366,7 @@
             });
             ctx.restore();
 
-            // 発射台 & ガイド (白から落ち着いた濃いめの薄グレー #cbd5e1 に変更して視認性を向上)
+            // 発射台 & ガイド
             ctx.fillStyle = '#cbd5e1'; ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 2;
             ctx.beginPath(); ctx.roundRect(launcher.x, launcher.y, launcher.width, launcher.height, 15); ctx.fill(); ctx.stroke();
 
