@@ -1,680 +1,1249 @@
 <!DOCTYPE html>
+
 <html lang="ja">
+
 <head>
+
     <meta charset="UTF-8">
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>コイン投擲シミュレーター</title>
+
     <!-- SheetJS (Excel出力用ライブラリ) の読み込み -->
+
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
     <style>
+
         * { box-sizing: border-box; }
+
         body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f0f4f8; margin: 0; padding: 20px; color: #333; }
+
         h1 { font-size: 24px; margin-bottom: 10px; color: #1e3a8a; }
+
         
+
         .top-controls { background: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 15px 20px; align-items: center; }
+
         .control-item { display: flex; align-items: center; gap: 8px; }
+
         .control-item label { font-weight: bold; font-size: 13px; cursor: pointer; }
+
         .val-box { width: 65px; text-align: center; border: 1px solid #ccc; border-radius: 4px; padding: 3px; font-weight: bold; background: #f8fafc; font-size: 13px; }
+
         
+
         .simulation-container { display: flex; flex-direction: column; gap: 15px; }
+
         
+
         /* カーソルを黒色の明確なクロスヘア(SVG)に変更 */
+
         canvas { 
+
             background-color: #a5b4fc; 
+
             border: 2px solid #6366f1; 
+
             border-radius: 8px; 
+
             width: 100%; 
+
             max-width: 1200px; 
+
             height: 260px; 
+
             display: block; 
+
             cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%230f172a" stroke-width="2"><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/></svg>') 12 12, crosshair; 
+
         }
+
         
+
         .bottom-area { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
+
         .btn-group { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
         button { padding: 10px 16px; font-size: 13px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; transition: 0.2s; }
+
         .btn-excel { background-color: #16a34a; color: white; }
+
         .btn-excel:hover { background-color: #15803d; }
+
         .btn-auto { background-color: #10b981; color: white; }
+
         .btn-auto:hover { background-color: #059669; }
+
         .btn-reset { background-color: #ef4444; color: white; }
+
         .btn-reset:hover { background-color: #dc2626; }
+
         
+
         .auto-box { display: flex; align-items: center; gap: 8px; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 6px 12px; border-radius: 6px; }
+
         
+
         .table-container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 100%; max-width: 1200px; max-height: 280px; overflow-y: auto; overflow-x: auto; }
+
         table { width: 100%; border-collapse: collapse; font-size: 11px; text-align: center; white-space: nowrap; }
+
         th, td { padding: 6px 8px; border: 1px solid #cbd5e1; }
+
         th { background-color: #f1f5f9; font-weight: bold; position: sticky; top: 0; z-index: 10; }
+
         
+
         .desc-box { background: #eff6ff; border-left: 4px solid #2563eb; padding: 10px 15px; border-radius: 4px; font-size: 13px; margin-bottom: 15px; }
+
         .disabled-input { opacity: 0.3; pointer-events: none; }
+
     </style>
+
 </head>
+
 <body>
 
+
+
     <h1>🥌 コイン射撃シミュレーター</h1>
+
     
+
     <div class="desc-box">
+
         <strong>【使い方】</strong><br>
+
         手動でドラッグして発射するか、下の「自動実行」でデータを集めることができます。<br>
+
         「はじめから」を押すとデータがリセットされます。押すときは注意してください。<br>
+
         データを集めたらExcel出力して分析をしてみよう。分析方法は、ワークシートを見てね。
+
     </div>
+
+
 
     <!-- 設定パネル -->
+
     <div class="top-controls">
+
         <div class="control-item">
+
             <input type="checkbox" id="chk-force" onchange="toggleParam('force')">
+
             <label for="chk-force">引き量制限(mm)</label>
+
             <input type="range" id="param-force" min="40" max="160" value="120" oninput="updateVal('force')" class="disabled-input">
+
             <span id="val-force" class="val-box disabled-input">-</span>
+
         </div>
 
+
+
         <div class="control-item">
+
             <input type="checkbox" id="chk-guide" onchange="toggleParam('guide')">
+
             <label for="chk-guide">ガイド幅(cm)</label>
+
             <input type="range" id="param-guide" min="1" max="50" value="35" oninput="updateVal('guide')" class="disabled-input">
+
             <span id="val-guide" class="val-box disabled-input">-</span>
+
         </div>
 
+
+
         <div class="control-item">
+
             <input type="checkbox" id="chk-temp" onchange="toggleParam('temp')">
+
             <label for="chk-temp">🌡 室温(℃)</label>
+
             <input type="range" id="param-temp" min="0" max="30" value="15" step="1" oninput="updateVal('temp')" class="disabled-input">
+
             <span id="val-temp" class="val-box disabled-input">-</span>
+
         </div>
 
+
+
         <div class="control-item">
+
             <input type="checkbox" id="chk-weight" onchange="toggleParam('weight')">
+
             <label for="chk-weight">⚖ 重さ(g)</label>
+
             <input type="range" id="param-weight" min="1.0" max="10.0" value="5.0" step="0.1" oninput="updateVal('weight')" class="disabled-input">
+
             <span id="val-weight" class="val-box disabled-input">-</span>
+
         </div>
 
+
+
         <div class="control-item">
+
             <input type="checkbox" id="chk-fric" onchange="toggleParam('fric')">
+
             <label for="chk-fric">🧊 摩擦係数</label>
+
             <input type="range" id="param-fric" min="0.005" max="0.080" value="0.030" step="0.001" oninput="updateVal('fric')" class="disabled-input">
+
             <span id="val-fric" class="val-box disabled-input">-</span>
+
         </div>
+
     </div>
+
+
 
     <div class="simulation-container">
+
         <canvas id="canvas" width="1200" height="260"></canvas>
+
         
+
         <div class="bottom-area">
+
             <div class="btn-group">
+
                 <div class="auto-box">
+
                     <label for="auto-count" style="font-weight:bold; font-size:12px;">⚡ 自動試行回数:</label>
+
                     <input type="range" id="auto-count" min="20" max="200" value="50" step="10" oninput="document.getElementById('val-auto-count').innerText = this.value + '回'">
+
                     <span id="val-auto-count" style="font-weight:bold; font-size:12px; width:45px;">50回</span>
+
                     <button class="btn-auto" id="btn-run-auto" onclick="runAutoSimulation()">自動実行</button>
+
                 </div>
+
                 <button class="btn-excel" onclick="downloadExcel()">Excel出力</button>
+
                 <button class="btn-reset" onclick="resetData()">はじめから</button>
+
             </div>
+
+
 
             <div class="table-container">
+
                 <table>
+
                     <thead>
+
                         <tr>
+
                             <th>試行回数</th>
+
                             <th>コインの状態</th>
+
                             <th>引き量(mm)</th>
+
                             <th>角度(°)</th>
+
                             <th>騒音レベル(dB)</th>
+
                             <th>室温(℃)</th>
+
                             <th>湿度(%)</th>
+
                             <th>天気</th>
+
                             <th>重さ(g)</th>
+
                             <th>摩擦係数</th>
+
                             <th>心拍数(bpm)</th>
+
                             <th>連続成功</th>
+
                             <th>移動時間(秒)</th>
+
                             <th>到達[横](mm)</th>
+
                             <th>直線[斜め](mm)</th>
+
                             <th>横ズレ(mm)</th>
+
                             <th>成功判定</th>
+
                         </tr>
+
                     </thead>
+
                     <tbody id="data-table">
+
                     </tbody>
+
                 </table>
+
             </div>
+
         </div>
+
     </div>
 
+
+
     <script>
+
         const canvas = document.getElementById('canvas');
+
         const ctx = canvas.getContext('2d');
+
         
+
         let trialCount = 0;
+
         let historyData = [];
+
         let stoneHits = [];
+
         
+
         // メンタル・状態管理用変数
+
         let currentHeartRate = 75;
+
         let currentStreak = 0;
+
         let lastResult = '成功'; // 初期値
 
+
+
         const launcher = { x: 20, y: 50, width: 130, height: 160, stoneRadius: 10, restX: 130, restY: 130 };
+
         const MAX_DISTANCE_MM = 2300;
-        const RINK_END_X = 1150; // 右端目盛りの描画領域を確保するため調整
+
+        const RINK_END_X = 1180;
+
+
 
         let isDragging = false;
+
         let dragX = launcher.restX;
+
         let dragY = launcher.restY;
+
         let isAnimating = false;
 
+
+
         const weatherList = ['晴れ', '曇り', '雨', '雪'];
+
         const coinConditionList = ['ピカピカ（新硬貨）', 'やや汚れ', '黒ずみ（古硬貨）'];
 
+
+
         function calcPowerFromDx(dx) { return Math.round(dx * 1.6); }
+
         function calcLimitXFromPower(power) { return launcher.restX - (power / 1.6); }
 
+
+
         function updateVal(param) {
+
             const chk = document.getElementById(`chk-${param}`);
+
             const el = document.getElementById(`param-${param}`);
+
             const valBox = document.getElementById(`val-${param}`);
+
+
 
             if (!chk.checked) {
+
                 valBox.innerText = "-";
+
                 return;
+
             }
+
+
 
             let unit = "";
+
             if(param === 'force') unit = "mm";
+
             if(param === 'guide') unit = "cm";
+
             if(param === 'temp') unit = "℃";
+
             if(param === 'weight') unit = "g";
+
             
+
             valBox.innerText = el.value + unit;
+
             drawRink();
+
         }
+
+
 
         function toggleParam(param) {
+
             const chk = document.getElementById(`chk-${param}`);
+
             const slider = document.getElementById(`param-${param}`);
+
             const valBox = document.getElementById(`val-${param}`);
+
             
+
             if (chk.checked) {
+
                 slider.classList.remove('disabled-input');
+
                 valBox.classList.remove('disabled-input');
+
                 updateVal(param);
+
             } else {
+
                 slider.classList.add('disabled-input');
+
                 valBox.classList.add('disabled-input');
+
                 valBox.innerText = "-";
+
             }
+
             drawRink();
+
         }
+
+
 
         function getMousePos(e) {
+
             const rect = canvas.getBoundingClientRect();
+
             return {
+
                 x: (e.clientX - rect.left) * (canvas.width / rect.width),
+
                 y: (e.clientY - rect.top) * (canvas.height / rect.height)
+
             };
+
         }
+
+
 
         canvas.addEventListener('mousedown', (e) => {
+
             if (isAnimating) return;
+
             const mousePos = getMousePos(e);
+
             if (Math.hypot(mousePos.x - launcher.restX, mousePos.y - launcher.restY) < 25) {
+
                 isDragging = true;
+
             }
+
         });
+
+
 
         canvas.addEventListener('mousemove', (e) => {
+
             if (!isDragging || isAnimating) return;
+
             const mousePos = getMousePos(e);
 
+
+
             let minX = launcher.x + 10;
+
             if (document.getElementById('chk-force').checked) {
+
                 minX = Math.max(minX, calcLimitXFromPower(parseFloat(document.getElementById('param-force').value)));
+
             }
+
+
 
             dragX = Math.min(launcher.restX, Math.max(minX, mousePos.x));
+
             const isGuide = document.getElementById('chk-guide').checked;
+
             const guideVal = isGuide ? parseFloat(document.getElementById('param-guide').value) : 35;
+
             const maxYSpread = (guideVal - 1) / 49 * 60; 
+
             dragY = Math.min(launcher.restY + maxYSpread, Math.max(launcher.restY - maxYSpread, mousePos.y));
 
+
+
             drawRink();
+
         });
+
+
 
         window.addEventListener('mouseup', () => {
+
             if (isDragging) {
+
                 isDragging = false;
+
                 shootStone();
+
             }
+
         });
 
+
+
         function getXFromDistance(mm) { return launcher.restX + (mm * ((RINK_END_X - launcher.restX) / MAX_DISTANCE_MM)); }
+
         function getDistanceFromX(x) { return x < launcher.restX ? 0 : (x - launcher.restX) * (MAX_DISTANCE_MM / (RINK_END_X - launcher.restX)); }
+
         function getActualDistance(x, y) {
+
             const pxPerMM = (RINK_END_X - launcher.restX) / MAX_DISTANCE_MM;
+
             return Math.hypot(x - launcher.restX, y - launcher.restY) / pxPerMM;
+
         }
+
+
 
         function drawRink() {
+
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+
             ctx.fillStyle = '#a5b4fc';
+
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // --- X軸目盛り（到達距離） ---
+
+
+            // 目盛り
+
             ctx.strokeStyle = '#475569';
+
             ctx.fillStyle = '#0f172a';
+
             ctx.font = 'bold 11px sans-serif';
+
             for (let mm = 100; mm <= MAX_DISTANCE_MM; mm += 100) {
+
                 const x = getXFromDistance(mm);
+
                 ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+
                 if (mm % 200 === 0 || mm === 100) ctx.fillText(mm, x - 12, 15);
+
             }
 
-            // --- Y軸目盛り（横ズレ定規：右端 & 左端） ---
-            const pxPerMM = (RINK_END_X - launcher.restX) / MAX_DISTANCE_MM;
-            const stepMM = 20; // 20mm刻みで線を描画
-            const maxDevMM = Math.floor((canvas.height / 2) / pxPerMM);
 
-            ctx.save();
-            ctx.strokeStyle = '#1e293b';
-            ctx.fillStyle = '#0f172a';
-            ctx.font = '10px sans-serif';
-
-            const rightRulerX = RINK_END_X;
-            const leftRulerX = 10;
-
-            // 定規の縦軸ベース線
-            ctx.beginPath();
-            ctx.moveTo(rightRulerX, 0); ctx.lineTo(rightRulerX, canvas.height);
-            ctx.moveTo(leftRulerX, 0); ctx.lineTo(leftRulerX, canvas.height);
-            ctx.lineWidth = 2;
-            ctx.stroke();
-
-            // 定規の刻み線と数値ラベルの描画
-            for (let dev = -maxDevMM; dev <= maxDevMM; dev += stepMM) {
-                const y = launcher.restY + (dev * pxPerMM);
-                if (y < 0 || y > canvas.height) continue;
-
-                const isMajor = (dev % 40 === 0); // 40mmごとに長い線と数字ラベル
-                const tickLength = isMajor ? 12 : 6;
-
-                // 右端目盛り（目盛り線を左向きに伸ばす）
-                ctx.beginPath();
-                ctx.moveTo(rightRulerX, y);
-                ctx.lineTo(rightRulerX - tickLength, y);
-                ctx.lineWidth = isMajor ? 1.5 : 1;
-                ctx.stroke();
-
-                // 左端目盛り
-                ctx.beginPath();
-                ctx.moveTo(leftRulerX, y);
-                ctx.lineTo(leftRulerX + tickLength, y);
-                ctx.lineWidth = isMajor ? 1.5 : 1;
-                ctx.stroke();
-
-                // ラベル描画（40mm刻み）
-                if (isMajor) {
-                    // 右端：数字を定規の右側に表示
-                    ctx.textAlign = 'left';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(`${dev}`, rightRulerX + 6, y);
-
-                    // 左端：数字を定規の右側に表示
-                    ctx.fillText(`${dev}`, leftRulerX + 15, y);
-                }
-            }
-            ctx.restore();
 
             // ハウス（目標1700mm）
+
             const houseX = getXFromDistance(1700);
+
             const houseY = canvas.height / 2;
+
             const outerRadius = (RINK_END_X - launcher.restX) / (MAX_DISTANCE_MM / 100);
 
+
+
             ctx.beginPath(); ctx.arc(houseX, houseY, outerRadius, 0, Math.PI * 2); ctx.fillStyle = '#ef4444'; ctx.fill();
+
             ctx.beginPath(); ctx.arc(houseX, houseY, outerRadius * 0.66, 0, Math.PI * 2); ctx.fillStyle = '#ffffff'; ctx.fill();
+
             ctx.beginPath(); ctx.arc(houseX, houseY, outerRadius * 0.33, 0, Math.PI * 2); ctx.fillStyle = '#2563eb'; ctx.fill();
 
+
+
             // 分度器（放射状の角度目盛）の描画
+
             ctx.save();
+
             ctx.font = '10px sans-serif';
+
             ctx.textAlign = 'left';
+
             ctx.textBaseline = 'middle';
+
             const protractorRadius = 110;
+
             const angles = [-30, -20, -10, 0, 10, 20, 30];
 
+
+
             angles.forEach(deg => {
+
                 const rad = (deg * Math.PI) / 180;
+
                 const endX = launcher.restX + protractorRadius * Math.cos(rad);
+
                 const endY = launcher.restY + protractorRadius * Math.sin(rad);
 
+
+
                 ctx.beginPath();
+
                 ctx.moveTo(launcher.restX, launcher.restY);
+
                 ctx.lineTo(endX, endY);
+
                 ctx.strokeStyle = (deg === 0) ? 'rgba(30, 58, 138, 0.6)' : 'rgba(71, 85, 105, 0.35)';
+
                 ctx.lineWidth = (deg === 0) ? 1.5 : 1;
+
                 if (deg !== 0) ctx.setLineDash([3, 3]);
+
                 else ctx.setLineDash([]);
+
                 ctx.stroke();
 
+
+
                 const labelX = launcher.restX + (protractorRadius + 10) * Math.cos(rad);
+
                 const labelY = launcher.restY + (protractorRadius + 10) * Math.sin(rad);
+
                 ctx.fillStyle = '#1e293b';
+
                 ctx.fillText(`${deg}°`, labelX, labelY);
+
             });
+
             ctx.restore();
 
-            // 発射台 & ガイド
+
+
+            // 発射台 & ガイド (白から落ち着いた濃いめの薄グレー #cbd5e1 に変更して視認性を向上)
+
             ctx.fillStyle = '#cbd5e1'; ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 2;
+
             ctx.beginPath(); ctx.roundRect(launcher.x, launcher.y, launcher.width, launcher.height, 15); ctx.fill(); ctx.stroke();
 
+
+
             if (document.getElementById('chk-guide').checked) {
+
                 const spread = (parseFloat(document.getElementById('param-guide').value) - 1) / 49 * 60;
+
                 ctx.strokeStyle = '#1d4ed8'; ctx.lineWidth = 2;
+
                 ctx.beginPath(); ctx.moveTo(launcher.x, launcher.restY - spread); ctx.lineTo(launcher.x + launcher.width, launcher.restY - spread); ctx.stroke();
+
                 ctx.beginPath(); ctx.moveTo(launcher.x, launcher.restY + spread); ctx.lineTo(launcher.x + launcher.width, launcher.restY + spread); ctx.stroke();
+
             }
+
+
 
             if (document.getElementById('chk-force').checked) {
+
                 const limitX = calcLimitXFromPower(parseFloat(document.getElementById('param-force').value));
+
                 ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 3;
+
                 ctx.beginPath(); ctx.moveTo(limitX, launcher.y + 5); ctx.lineTo(limitX, launcher.y + launcher.height - 5); ctx.stroke();
+
             }
+
+
 
             // コイン
+
             if (!isAnimating) {
+
                 if (isDragging) {
+
                     ctx.strokeStyle = '#d97706'; ctx.lineWidth = 3;
+
                     ctx.beginPath(); ctx.moveTo(launcher.restX, launcher.restY); ctx.lineTo(dragX, dragY); ctx.stroke();
+
                 }
+
                 ctx.beginPath(); ctx.arc(dragX, dragY, launcher.stoneRadius, 0, Math.PI * 2);
+
                 ctx.fillStyle = '#334155'; ctx.fill(); ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 2; ctx.stroke();
+
             }
+
+
 
             // 履歴
+
             stoneHits.forEach(stone => {
+
                 if (stone.x <= canvas.width && stone.y >= 0 && stone.y <= canvas.height) {
+
                     ctx.beginPath(); ctx.arc(stone.x, stone.y, 8, 0, Math.PI * 2);
+
                     ctx.fillStyle = Math.hypot(stone.x - houseX, stone.y - houseY) <= outerRadius ? '#ef4444' : '#1e293b';
+
                     ctx.fill(); ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 1.5; ctx.stroke();
+
                 }
+
             });
+
         }
 
+
+
         function shootStone(overrideDx = null, overrideDy = null, isFast = false) {
+
             isAnimating = true;
 
+
+
             const currentCondition = coinConditionList[Math.floor(Math.random() * coinConditionList.length)];
+
             const noise = Math.floor(Math.random() * 41) + 40;
+
             const currentWeather = weatherList[Math.floor(Math.random() * weatherList.length)];
 
+
+
             let humidity = 50;
+
             if (currentWeather === '雨') humidity = Math.floor(Math.random() * 16) + 75;
+
             else if (currentWeather === '雪') humidity = Math.floor(Math.random() * 21) + 60;
+
             else if (currentWeather === '晴れ') humidity = Math.floor(Math.random() * 21) + 30;
+
             else humidity = Math.floor(Math.random() * 21) + 45;
 
+
+
             let weight = 5.0;
+
             if (document.getElementById('chk-weight').checked) {
+
                 weight = parseFloat(document.getElementById('param-weight').value);
+
             } else {
+
                 weight = parseFloat((Math.random() * 9.0 + 1.0).toFixed(1));
+
             }
 
+
+
             const temp = document.getElementById('chk-temp').checked 
+
                 ? parseFloat(document.getElementById('param-temp').value)
+
                 : Math.floor(Math.random() * 11) + 10;
 
+
+
             // コインの状態・重さ・室温から摩擦係数を算出
+
             let conditionFrictionAdd = 0;
+
             if (currentCondition === 'やや汚れ') conditionFrictionAdd = 0.0040;
+
             if (currentCondition === '黒ずみ（古硬貨）') conditionFrictionAdd = 0.0090;
 
+
+
             let baseFriction = document.getElementById('chk-fric').checked
+
                 ? parseFloat(document.getElementById('param-fric').value)
+
                 : 0.038 - (temp * 0.0001) + (weight * 0.0008) + conditionFrictionAdd;
+
             
+
             baseFriction = Math.max(0.005, baseFriction);
 
+
+
             const dx = overrideDx !== null ? overrideDx : (launcher.restX - dragX);
+
             let dy = overrideDy !== null ? overrideDy : (dragY - launcher.restY);
+
             const actualPower = calcPowerFromDx(dx);
 
+
+
             // 心拍数の計算ロジック
+
             const targetHR = 75;
+
             let hrDiff = targetHR - currentHeartRate;
+
             let change = hrDiff * 0.2 + (lastResult === '失敗' ? (Math.random() * 6 + 2) : -(Math.random() * 6 + 2));
+
             currentHeartRate += change;
+
             currentHeartRate = Math.min(110, Math.max(65, currentHeartRate));
+
             let heartRateVal = Math.round(currentHeartRate + (Math.random() * 8 - 4));
+
             heartRateVal = Math.min(115, Math.max(62, heartRateVal));
 
+
+
             let hrEffect = (heartRateVal - 75) * 0.02 * (Math.random() - 0.5);
+
             dy += hrEffect;
 
+
+
             const angleRad = Math.atan2(-dy, dx);
+
             const angleDeg = parseFloat((angleRad * (180 / Math.PI)).toFixed(2));
 
+
+
             let initialSpeed = dx * 0.04;
+
             let posX = launcher.restX;
+
             let posY = launcher.restY;
+
             let vx = Math.cos(angleRad) * initialSpeed;
+
             let vy = Math.sin(angleRad) * initialSpeed;
 
+
+
             let isOutOfBounds = false;
+
             let frameCount = 0;
 
+
+
             return new Promise((resolve) => {
+
                 function animate() {
+
                     const stepCount = isFast ? 10 : 1; 
+
                     for(let i = 0; i < stepCount; i++) {
+
                         frameCount++;
+
                         posX += vx * 10;
+
                         posY += vy * 10;
 
+
+
                         vx *= (1 - baseFriction);
+
                         vy *= (1 - baseFriction);
 
+
+
                         if (posY < 0 || posY > canvas.height) {
+
                             isOutOfBounds = true;
+
                             break;
+
                         }
+
                         if (Math.hypot(vx, vy) <= 0.01 || posX >= RINK_END_X) break;
+
                     }
 
+
+
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
                     drawRink();
 
+
+
                     ctx.beginPath(); ctx.arc(posX, posY, launcher.stoneRadius, 0, Math.PI * 2);
+
                     ctx.fillStyle = '#800000'; ctx.fill();
 
+
+
                     if (Math.hypot(vx, vy) > 0.01 && posX < RINK_END_X && !isOutOfBounds) {
+
                         if (isFast) {
+
                             setTimeout(animate, 0);
+
                         } else {
+
                             requestAnimationFrame(animate);
+
                         }
+
                     } else {
+
                         trialCount++;
+
                         let distX = getDistanceFromX(posX);
+
                         let distDiag = getActualDistance(posX, posY);
 
+
+
                         const pxPerMM = (RINK_END_X - launcher.restX) / MAX_DISTANCE_MM;
+
                         let sideDeviation = (posY - launcher.restY) / pxPerMM;
 
+
+
                         let displayX = distX.toFixed(3);
+
                         let displayDiag = distDiag.toFixed(3);
+
                         let displayDev = sideDeviation.toFixed(3);
+
+
 
                         let moveTimeSeconds = (frameCount * 0.045).toFixed(2);
 
+
+
                         const houseX = getXFromDistance(1700);
+
                         const houseY = canvas.height / 2;
+
                         const pxPer100mm = (RINK_END_X - launcher.restX) / (MAX_DISTANCE_MM / 100);
+
                         
+
                         const isSuccess = (Math.hypot(posX - houseX, posY - houseY) <= pxPer100mm) ? '成功' : '失敗';
+
                         
+
                         // 連続成功記録の更新
+
                         if (isSuccess === '成功') {
+
                             currentStreak++;
+
                         } else {
+
                             currentStreak = 0;
+
                         }
+
                         lastResult = isSuccess;
 
+
+
                         if (distDiag > MAX_DISTANCE_MM || isOutOfBounds) {
+
                             displayX = '測定不能'; 
+
                             displayDiag = '測定不能'; 
+
                             displayDev = '測定不能';
+
                         } else {
+
                             stoneHits.push({ x: posX, y: posY });
+
                         }
 
+
+
                         const record = {
+
                             trial: trialCount,
+
                             coinCondition: currentCondition,
+
                             force: actualPower,
+
                             angle: angleDeg,
+
                             noise: noise,
+
                             temp: temp,
+
                             humidity: humidity,
+
                             weather: currentWeather,
+
                             weight: weight,
+
                             friction: parseFloat(baseFriction.toFixed(4)),
+
                             heartRate: heartRateVal,
+
                             streak: currentStreak,
+
                             moveTime: parseFloat(moveTimeSeconds),
+
                             distanceX: displayX === '測定不能' ? '測定不能' : parseFloat(displayX),
+
                             distanceDiag: displayDiag === '測定不能' ? '測定不能' : parseFloat(displayDiag),
+
                             sideDev: displayDev === '測定不能' ? '測定不能' : parseFloat(displayDev),
+
                             houseIn: isSuccess
+
                         };
+
                         historyData.push(record);
 
+
+
                         // テーブル更新
+
                         const tbody = document.getElementById('data-table');
+
                         const tr = document.createElement('tr');
+
                         tr.innerHTML = `
+
                             <td>${record.trial}</td>
+
                             <td>${record.coinCondition}</td>
+
                             <td>${record.force}</td>
+
                             <td>${record.angle}</td>
+
                             <td>${record.noise}</td>
+
                             <td>${record.temp}</td>
+
                             <td>${record.humidity}%</td>
+
                             <td>${record.weather}</td>
+
                             <td>${record.weight}</td>
+
                             <td>${record.friction}</td>
+
                             <td>${record.heartRate}</td>
+
                             <td>${record.streak}</td>
+
                             <td>${record.moveTime}</td>
+
                             <td><strong style="${displayX === '測定不能' ? 'color:#ef4444;' : ''}">${record.distanceX}</strong></td>
+
                             <td><strong style="${displayDiag === '測定不能' ? 'color:#ef4444;' : ''}">${record.distanceDiag}</strong></td>
+
                             <td><strong style="${displayDev === '測定不能' ? 'color:#ef4444;' : ''}">${record.sideDev}</strong></td>
+
                             <td>${record.houseIn}</td>
+
                         `;
+
                         tbody.insertBefore(tr, tbody.firstChild);
 
+
+
                         dragX = launcher.restX; dragY = launcher.restY;
+
                         isAnimating = false;
+
                         drawRink();
+
                         resolve();
+
                     }
+
                 }
+
                 animate();
+
             });
+
         }
+
+
 
         async function runAutoSimulation() {
+
             if (isAnimating) return;
+
             const count = parseInt(document.getElementById('auto-count').value);
+
             const btn = document.getElementById('btn-run-auto');
+
             btn.disabled = true;
+
             btn.innerText = "実行中...";
 
+
+
             for (let i = 0; i < count; i++) {
+
                 let minDx = 25; 
+
                 if (document.getElementById('chk-force').checked) {
+
                     const limitVal = parseFloat(document.getElementById('param-force').value);
+
                     minDx = limitVal / 1.6;
+
                 }
+
                 const maxDx = 100; 
+
                 const randomDx = Math.random() * (maxDx - minDx) + minDx;
 
+
+
                 const isGuide = document.getElementById('chk-guide').checked;
+
                 const guideVal = isGuide ? parseFloat(document.getElementById('param-guide').value) : 35;
+
                 
+
                 const maxYSpread = (guideVal / 50) * 12;
+
                 const randomDy = (Math.random() * 2 - 1) * maxYSpread;
 
+
+
                 await shootStone(randomDx, randomDy, true);
+
             }
+
+
 
             btn.disabled = false;
+
             btn.innerText = "自動実行";
+
         }
+
+
 
         function resetData() {
+
             if (historyData.length > 0) {
+
                 const isConfirmed = confirm(
+
                     `これまでの試行データ（${historyData.length}件）がすべて消去されます。\n本当にリセットしますか？`
+
                 );
+
                 if (!isConfirmed) {
+
                     return;
+
                 }
+
             }
 
+
+
             trialCount = 0; 
+
             historyData = []; 
+
             stoneHits = [];
+
             currentHeartRate = 75;
+
             currentStreak = 0;
+
             lastResult = '成功';
+
             dragX = launcher.restX; 
+
             dragY = launcher.restY;
+
             document.getElementById('data-table').innerHTML = '';
+
             drawRink();
+
         }
+
+
 
         // Excel (.xlsx) ファイル出力関数
+
         function downloadExcel() {
+
             if (historyData.length === 0) return alert('データがありません。');
 
+
+
             // Excel用データオブジェクトの整形（ヘッダー指定）
+
             const formattedData = historyData.map(r => ({
+
                 '試行回数': r.trial,
+
                 'コインの状態': r.coinCondition,
+
                 '引き量(mm)': r.force,
+
                 '角度(°)': r.angle,
+
                 '騒音レベル(dB)': r.noise,
+
                 '室温(℃)': r.temp,
+
                 '湿度(%)': r.humidity,
+
                 '天気': r.weather,
+
                 'コイン重さ(g)': r.weight,
+
                 '摩擦係数': r.friction,
+
                 '心拍数(bpm)': r.heartRate,
+
                 '連続成功': r.streak,
+
                 '移動時間(秒)': r.moveTime,
+
                 '到達距離_横(mm)': r.distanceX,
+
                 '直線距離_斜め(mm)': r.distanceDiag,
+
                 '横ズレ(mm)': r.sideDev,
+
                 'ハウスイン判定': r.houseIn
+
             }));
 
+
+
             // ワークシートおよびワークブックの作成
+
             const worksheet = XLSX.utils.json_to_sheet(formattedData);
+
             const workbook = XLSX.utils.book_new();
+
             XLSX.utils.book_append_sheet(workbook, worksheet, "シミュレーション結果");
 
+
+
             // ファイルダウンロードを実行
+
             XLSX.writeFile(workbook, "coin_shooting_eda_data.xlsx");
+
         }
 
+
+
         // 初期化
+
         ['force', 'guide', 'temp', 'weight', 'fric'].forEach(p => toggleParam(p));
+
         drawRink();
+
     </script>
+
 </body>
+
 </html>
