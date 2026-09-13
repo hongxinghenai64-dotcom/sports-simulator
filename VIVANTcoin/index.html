@@ -133,8 +133,9 @@
                             <th>連続成功</th>
                             <th>移動時間(秒)</th>
                             <th>到達[横](mm)</th>
-                            <th>直線[斜め](mm)</th>
+                            <th>直線距離(mm)</th>
                             <th>横ズレ(mm)</th>
+                            <th>中心からの距離(mm)</th>
                             <th>成功判定</th>
                         </tr>
                     </thead>
@@ -377,7 +378,6 @@
             if (currentCondition === 'やや汚れ') conditionFrictionAdd = 0.0040;
             if (currentCondition === '黒ずみ（古硬貨）') conditionFrictionAdd = 0.0090;
 
-            // 基準値を0.038から0.032に変更（約400mm飛距離アップに対応）
             let baseFriction = document.getElementById('chk-fric').checked
                 ? parseFloat(document.getElementById('param-fric').value)
                 : 0.032 - (temp * 0.0001) + (weight * 0.0008) + conditionFrictionAdd;
@@ -454,6 +454,14 @@
                         let displayDiag = distDiag.toFixed(3);
                         let displayDev = sideDeviation.toFixed(3);
 
+                        // ハウスの中心（1700mm, 0mm）からの距離を算出
+                        let distFromCenter = '測定不能';
+                        if (displayX !== '測定不能' && displayDev !== '測定不能') {
+                            const errorX = parseFloat(displayX) - 1700;
+                            const errorY = parseFloat(displayDev);
+                            distFromCenter = Math.hypot(errorX, errorY).toFixed(3);
+                        }
+
                         let moveTimeSeconds = (frameCount * 0.045).toFixed(2);
 
                         const houseX = getXFromDistance(1700);
@@ -474,6 +482,7 @@
                             displayX = '測定不能'; 
                             displayDiag = '測定不能'; 
                             displayDev = '測定不能';
+                            distFromCenter = '測定不能';
                         } else {
                             stoneHits.push({ x: posX, y: posY });
                         }
@@ -495,6 +504,7 @@
                             distanceX: displayX === '測定不能' ? '測定不能' : parseFloat(displayX),
                             distanceDiag: displayDiag === '測定不能' ? '測定不能' : parseFloat(displayDiag),
                             sideDev: displayDev === '測定不能' ? '測定不能' : parseFloat(displayDev),
+                            distFromCenter: distFromCenter === '測定不能' ? '測定不能' : parseFloat(distFromCenter),
                             houseIn: isSuccess
                         };
                         historyData.push(record);
@@ -519,6 +529,7 @@
                             <td><strong style="${displayX === '測定不能' ? 'color:#ef4444;' : ''}">${record.distanceX}</strong></td>
                             <td><strong style="${displayDiag === '測定不能' ? 'color:#ef4444;' : ''}">${record.distanceDiag}</strong></td>
                             <td><strong style="${displayDev === '測定不能' ? 'color:#ef4444;' : ''}">${record.sideDev}</strong></td>
+                            <td><strong style="${distFromCenter === '測定不能' ? 'color:#ef4444;' : ''}">${record.distFromCenter}</strong></td>
                             <td>${record.houseIn}</td>
                         `;
                         tbody.insertBefore(tr, tbody.firstChild);
@@ -604,8 +615,9 @@
                 '連続成功': r.streak,
                 '移動時間(秒)': r.moveTime,
                 '到達距離_横(mm)': r.distanceX,
-                '直線距離_斜め(mm)': r.distanceDiag,
+                '直線距離(mm)': r.distanceDiag,
                 '横ズレ(mm)': r.sideDev,
+                '中心からの距離(mm)': r.distFromCenter,
                 'ハウスイン判定': r.houseIn
             }));
 
