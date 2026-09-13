@@ -552,18 +552,28 @@
             btn.innerText = "実行中...";
 
             for (let i = 0; i < count; i++) {
-                let dx = 70; // デフォルトの引き量(px)
-                
-                // 引き量制限チェックが入っている場合、設定値から dx を固定値として算出
+                let dx;
+                // 1. 引き量(dx)の決定
                 if (document.getElementById('chk-force').checked) {
+                    // チェックON：設定スライダーの値に固定
                     const limitVal = parseFloat(document.getElementById('param-force').value);
                     dx = limitVal / 1.6;
+                } else {
+                    // チェックOFF：手動の可動域全体（引き量 40mm〜160mm 相当 ＝ 25px〜100px）からランダム
+                    const minDx = 40 / 1.6; // 25
+                    const maxDx = 160 / 1.6; // 100
+                    dx = minDx + Math.random() * (maxDx - minDx);
                 }
 
-                const isGuide = document.getElementById('chk-guide').checked;
-                const guideVal = isGuide ? parseFloat(document.getElementById('param-guide').value) : 35;
-                
-                const maxYSpread = (guideVal / 50) * 12;
+                // 2. Y軸方向のブレ・角度(dy)の決定
+                let maxYSpread = 60; // 手動での最大可動域（上下±60px ≒ 約±30°）
+                if (document.getElementById('chk-guide').checked) {
+                    // チェックON：ガイド幅の設定値（1〜50cm）に応じて幅を制限
+                    const guideVal = parseFloat(document.getElementById('param-guide').value);
+                    maxYSpread = ((guideVal - 1) / 49) * 60;
+                }
+
+                // -maxYSpread 〜 +maxYSpread の範囲で全幅ランダム
                 const randomDy = (Math.random() * 2 - 1) * maxYSpread;
 
                 await shootStone(dx, randomDy, true);
