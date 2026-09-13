@@ -552,13 +552,13 @@
             btn.innerText = "実行中...";
 
             for (let i = 0; i < count; i++) {
-                let minDx = 25; 
+                let dx = 70; // デフォルトの引き量(px)
+                
+                // 引き量制限チェックが入っている場合、設定値から dx を固定値として算出
                 if (document.getElementById('chk-force').checked) {
                     const limitVal = parseFloat(document.getElementById('param-force').value);
-                    minDx = limitVal / 1.6;
+                    dx = limitVal / 1.6;
                 }
-                const maxDx = 100; 
-                const randomDx = Math.random() * (maxDx - minDx) + minDx;
 
                 const isGuide = document.getElementById('chk-guide').checked;
                 const guideVal = isGuide ? parseFloat(document.getElementById('param-guide').value) : 35;
@@ -566,7 +566,7 @@
                 const maxYSpread = (guideVal / 50) * 12;
                 const randomDy = (Math.random() * 2 - 1) * maxYSpread;
 
-                await shootStone(randomDx, randomDy, true);
+                await shootStone(dx, randomDy, true);
             }
 
             btn.disabled = false;
