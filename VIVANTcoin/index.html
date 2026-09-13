@@ -550,7 +550,7 @@
             const btn = document.getElementById('btn-run-auto');
             btn.disabled = true;
             btn.innerText = "実行中...";
-
+        
             for (let i = 0; i < count; i++) {
                 let dx;
                 // 1. 引き量(dx)の決定
@@ -564,21 +564,20 @@
                     const maxDx = 160 / 1.6; // 100
                     dx = minDx + Math.random() * (maxDx - minDx);
                 }
-
+        
                 // 2. Y軸方向のブレ・角度(dy)の決定
-                let maxYSpread = 60; // 手動での最大可動域（上下±60px ≒ 約±30°）
-                if (document.getElementById('chk-guide').checked) {
-                    // チェックON：ガイド幅の設定値（1〜50cm）に応じて幅を制限
-                    const guideVal = parseFloat(document.getElementById('param-guide').value);
-                    maxYSpread = ((guideVal - 1) / 49) * 35;
-                }
-
-                // -maxYSpread 〜 +maxYSpread の範囲で全幅ランダム
+                // チェックONなら入力値、OFFなら固定値35を使用
+                const isGuide = document.getElementById('chk-guide').checked;
+                const guideVal = isGuide ? parseFloat(document.getElementById('param-guide').value) : 35;
+        
+                // maxYSpreadの計算式：(guideVal / 50) * 12
+                // ※チェックOFF（guideVal=35）のときは maxYSpread = (35 / 50) * 12 ＝ 8.4
+                const maxYSpread = (guideVal / 50) * 12;
                 const randomDy = (Math.random() * 2 - 1) * maxYSpread;
-
+        
                 await shootStone(dx, randomDy, true);
             }
-
+        
             btn.disabled = false;
             btn.innerText = "自動実行";
         }
