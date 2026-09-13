@@ -53,7 +53,7 @@
 </head>
 <body>
 
-    <h1>🥌 コイン射撃シミュレーター解</h1>
+    <h1>🥌 コイン射撃シミュレーター修？</h1>
     
     <div class="desc-box">
         <strong>【使い方】</strong><br>
@@ -378,11 +378,16 @@
             if (currentCondition === 'やや汚れ') conditionFrictionAdd = 0.0040;
             if (currentCondition === '黒ずみ（古硬貨）') conditionFrictionAdd = 0.0090;
 
+            // 表示・記録用の基準摩擦係数
             let baseFriction = document.getElementById('chk-fric').checked
                 ? parseFloat(document.getElementById('param-fric').value)
                 : 0.032 - (temp * 0.0001) + (weight * 0.0008) + conditionFrictionAdd;
             
             baseFriction = Math.max(0.001, baseFriction);
+
+            // 実際の物理計算用に ±0.001 のランダムな揺らぎ（便宜上のカオス）を付加
+            const frictionNoise = (Math.random() * 0.002) - 0.001;
+            let actualFriction = Math.max(0.001, baseFriction + frictionNoise);
 
             const dx = overrideDx !== null ? overrideDx : (launcher.restX - dragX);
             let dy = overrideDy !== null ? overrideDy : (dragY - launcher.restY);
@@ -420,8 +425,9 @@
                         posX += vx * 10;
                         posY += vy * 10;
 
-                        vx *= (1 - baseFriction);
-                        vy *= (1 - baseFriction);
+                        // 内部挙動の減速には揺らぎを含めた actualFriction を使用
+                        vx *= (1 - actualFriction);
+                        vy *= (1 - actualFriction);
 
                         if (posY < 0 || posY > canvas.height) {
                             isOutOfBounds = true;
@@ -487,6 +493,7 @@
                             stoneHits.push({ x: posX, y: posY });
                         }
 
+                        // 記録および表示用には揺らぎ前の固定・統一された baseFriction を保持
                         const record = {
                             trial: trialCount,
                             coinCondition: currentCondition,
