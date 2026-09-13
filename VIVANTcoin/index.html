@@ -386,7 +386,7 @@
             baseFriction = Math.max(0.001, baseFriction);
 
             // 実際の物理計算用に ±0.001 のランダムな揺らぎ（便宜上のカオス）を付加
-            const frictionNoise = (Math.random() * 0.002) - 0.001;
+            const frictionNoise = (Math.random() * 0.004) - 0.002;
             let actualFriction = Math.max(0.001, baseFriction + frictionNoise);
 
             const dx = overrideDx !== null ? overrideDx : (launcher.restX - dragX);
