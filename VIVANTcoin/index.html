@@ -20,7 +20,7 @@
         }
 
         .container {
-            max-width: 900px;
+            max-width: 1100px; /* 900px から 1100px に広げてゆとりを持たせました */
             width: 100%;
             background: white;
             padding: 40px 30px;
@@ -43,8 +43,8 @@
 
         .card-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* カード幅の最小値を微調整 */
+            gap: 24px;
         }
 
         .card {
