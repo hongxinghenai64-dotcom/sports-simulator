@@ -101,17 +101,6 @@
         </div>
 
         <div class="control-item">
-            <input type="checkbox" id="chk-weather" onchange="toggleParam('weather')">
-            <label for="chk-weather">☀️ 天気</label>
-            <select id="param-weather" onchange="updateVal('weather')" class="param-select disabled-input">
-                <option value="晴れ">晴れ</option>
-                <option value="曇り">曇り</option>
-                <option value="雨">雨</option>
-                <option value="雪">雪</option>
-            </select>
-        </div>
-
-        <div class="control-item">
             <input type="checkbox" id="chk-weight" onchange="toggleParam('weight')">
             <label for="chk-weight">⚖ 重さ(g)</label>
             <input type="range" id="param-weight" min="1.0" max="10.0" value="5.0" step="0.1" oninput="updateVal('weight')" class="disabled-input">
@@ -130,16 +119,6 @@
             <label for="chk-heartRate">💓 心拍数(bpm)</label>
             <input type="range" id="param-heartRate" min="60" max="120" value="75" step="1" oninput="updateVal('heartRate')" class="disabled-input">
             <span id="val-heartRate" class="val-box disabled-input">-</span>
-        </div>
-
-        <div class="control-item">
-            <input type="checkbox" id="chk-coinCondition" onchange="toggleParam('coinCondition')">
-            <label for="chk-coinCondition">🪙 コインの状態</label>
-            <select id="param-coinCondition" onchange="updateVal('coinCondition')" class="param-select disabled-input">
-                <option value="ピカピカ（新硬貨）">ピカピカ（新硬貨）</option>
-                <option value="やや汚れ">やや汚れ</option>
-                <option value="黒ずみ（古硬貨）">黒ずみ（古硬貨）</option>
-            </select>
         </div>
     </div>
 
@@ -163,13 +142,11 @@
                     <thead>
                         <tr>
                             <th>試行回数</th>
-                            <th>コインの状態</th>
                             <th>引き量(mm)</th>
                             <th>角度(°)</th>
                             <th>騒音レベル(dB)</th>
                             <th>室温(℃)</th>
                             <th>湿度(%)</th>
-                            <th>天気</th>
                             <th>重さ(g)</th>
                             <th>摩擦係数</th>
                             <th>心拍数(bpm)</th>
@@ -408,15 +385,9 @@
         function shootStone(overrideDx = null, overrideDy = null, isFast = false) {
             isAnimating = true;
 
-            const currentCondition = document.getElementById('chk-coinCondition').checked
-                ? document.getElementById('param-coinCondition').value
-                : coinConditionList[Math.floor(Math.random() * coinConditionList.length)];
-
+            const currentCondition = coinConditionList[Math.floor(Math.random() * coinConditionList.length)];
             const noise = Math.floor(Math.random() * 41) + 40;
-
-            const currentWeather = document.getElementById('chk-weather').checked
-                ? document.getElementById('param-weather').value
-                : weatherList[Math.floor(Math.random() * weatherList.length)];
+            const currentWeather = weatherList[Math.floor(Math.random() * weatherList.length)];
 
             let humidity = 50;
             if (document.getElementById('chk-humidity').checked) {
@@ -439,7 +410,7 @@
                 ? parseFloat(document.getElementById('param-temp').value)
                 : Math.floor(Math.random() * 11) + 10;
 
-            // コインの状態・重さ・室温から摩擦係数を算出
+            // コインの状態・重さ・室温から摩擦係数を算出（内部計算ロジック保持）
             let conditionFrictionAdd = 0;
             if (currentCondition === 'やや汚れ') conditionFrictionAdd = 0.0040;
             if (currentCondition === '黒ずみ（古硬貨）') conditionFrictionAdd = 0.0090;
@@ -565,16 +536,14 @@
                             stoneHits.push({ x: posX, y: posY });
                         }
 
-                        // 記録および表示用には揺らぎ前の固定・統一された baseFriction を保持
+                        // 記録データ
                         const record = {
                             trial: trialCount,
-                            coinCondition: currentCondition,
                             force: actualPower,
                             angle: angleDeg,
                             noise: noise,
                             temp: temp,
                             humidity: humidity,
-                            weather: currentWeather,
                             weight: weight,
                             friction: parseFloat(baseFriction.toFixed(4)),
                             heartRate: heartRateVal,
@@ -588,18 +557,16 @@
                         };
                         historyData.push(record);
 
-                        // テーブル更新
+                        // テーブル更新（天気・コインの状態の列を除外）
                         const tbody = document.getElementById('data-table');
                         const tr = document.createElement('tr');
                         tr.innerHTML = `
                             <td>${record.trial}</td>
-                            <td>${record.coinCondition}</td>
                             <td>${record.force}</td>
                             <td>${record.angle}</td>
                             <td>${record.noise}</td>
                             <td>${record.temp}</td>
                             <td>${record.humidity}%</td>
-                            <td>${record.weather}</td>
                             <td>${record.weight}</td>
                             <td>${record.friction}</td>
                             <td>${record.heartRate}</td>
@@ -684,20 +651,18 @@
             drawRink();
         }
 
-        // Excel (.xlsx) ファイル出力関数
+        // Excel (.xlsx) ファイル出力関数（天気・コインの状態を除外）
         function downloadExcel() {
             if (historyData.length === 0) return alert('データがありません。');
 
             // Excel用データオブジェクトの整形（ヘッダー指定）
             const formattedData = historyData.map(r => ({
                 '試行回数': r.trial,
-                'コインの状態': r.coinCondition,
                 '引き量(mm)': r.force,
                 '角度(°)': r.angle,
                 '騒音レベル(dB)': r.noise,
                 '室温(℃)': r.temp,
                 '湿度(%)': r.humidity,
-                '天気': r.weather,
                 'コイン重さ(g)': r.weight,
                 '摩擦係数': r.friction,
                 '心拍数(bpm)': r.heartRate,
@@ -720,7 +685,7 @@
         }
 
         // 初期化
-        ['force', 'angle', 'guide', 'temp', 'humidity', 'weather', 'weight', 'fric', 'heartRate', 'coinCondition'].forEach(p => toggleParam(p));
+        ['force', 'angle', 'guide', 'temp', 'humidity', 'weight', 'fric', 'heartRate'].forEach(p => toggleParam(p));
         drawRink();
     </script>
 </body>
