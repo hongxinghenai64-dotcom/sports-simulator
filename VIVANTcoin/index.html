@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>コイン射撃シミュレーター | ポータル</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { 
+            font-family: 'Helvetica Neue', Arial, sans-serif; 
+            background-color: #f0f4f8; 
+            margin: 0; 
+            padding: 40px 20px; 
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+            background: white;
+            padding: 40px 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 26px;
+            color: #1e3a8a;
+            margin-bottom: 10px;
+        }
+
+        p.subtitle {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 35px;
+        }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 25px 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: all 0.2s ease;
+        }
+
+        .card:hover {
+            border-color: #3b82f6;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(59, 130, 246, 0.12);
+        }
+
+        .card h2 {
+            font-size: 18px;
+            color: #1e293b;
+            margin-top: 0;
+            margin-bottom: 12px;
+        }
+
+        .card p {
+            font-size: 13px;
+            color: #475569;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            display: inline-block;
+            text-decoration: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 14px;
+            color: white;
+            background-color: #2563eb;
+            transition: background-color 0.2s;
+        }
+
+        .btn:hover {
+            background-color: #1d4ed8;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>🥌 コイン射撃シミュレーター ポータル</h1>
+        <p class="subtitle">学芸大学付属国際中等教育学校 データ分析学習用ポータルサイト</p>
+
+        <div class="card-grid">
+            <!-- 1. 全選択コントロール -->
+            <div class="card">
+                <div>
+                    <h2>全固定モード</h2>
+                    <p>コントロールパネルのすべてのパラメータを自由に固定・操作できるフル機能シミュレーターです。</p>
+                </div>
+                <a href="./VIVANTcoin/simulator-all.html" class="btn">シミュレーターを開く</a>
+            </div>
+
+            <!-- 2. 単一選択コントロール -->
+            <div class="card">
+                <div>
+                    <h2>単一固定モード</h2>
+                    <p>コントロールパネルで同時に1つのパラメータのみを選択して固定・検証できるモードです。</p>
+                </div>
+                <a href="./VIVANTcoin/simulator-one.html" class="btn">シミュレーターを開く</a>
+            </div>
+
+            <!-- 3. コントロールなし -->
+            <div class="card">
+                <div>
+                    <h2>固定なしモード</h2>
+                    <p>コントロールパネルがなく、全てのパラメータがランダムまたは手動操作のみのモードです。</p>
+                </div>
+                <a href="./VIVANTcoin/simulator-none.html" class="btn">シミュレーターを開く</a>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
