@@ -15,7 +15,6 @@
         .control-item { display: flex; align-items: center; gap: 8px; }
         .control-item label { font-weight: bold; font-size: 13px; cursor: pointer; }
         .val-box { width: 65px; text-align: center; border: 1px solid #ccc; border-radius: 4px; padding: 3px; font-weight: bold; background: #f8fafc; font-size: 13px; }
-        select.param-select { border: 1px solid #ccc; border-radius: 4px; padding: 3px 6px; font-size: 13px; background: white; }
         
         .simulation-container { display: flex; flex-direction: column; gap: 15px; }
         
@@ -54,13 +53,13 @@
 </head>
 <body>
 
-    <h1>🥌 コイン射撃シミュレーター（学芸大学付属国際中等）</h1>
+    <h1>🥌 コイン射撃シミュレーターできたかも？</h1>
     
     <div class="desc-box">
         <strong>【使い方】</strong><br>
         手動でドラッグして発射するか、下の「自動実行」でデータを集めることができます。<br>
         「はじめから」を押すとデータがリセットされます。押すときは注意してください。<br>
-        データを集めたら「Excel出力」をして分析しよう。詳しくはワークシートを参照。
+        データを集めたらExcel出力して分析をしてみよう。分析方法は、ワークシートを見てね。
     </div>
 
     <!-- 設定パネル -->
@@ -70,13 +69,6 @@
             <label for="chk-force">引き量制限(mm)</label>
             <input type="range" id="param-force" min="40" max="160" value="120" oninput="updateVal('force')" class="disabled-input">
             <span id="val-force" class="val-box disabled-input">-</span>
-        </div>
-
-        <div class="control-item">
-            <input type="checkbox" id="chk-angle" onchange="toggleParam('angle')">
-            <label for="chk-angle">📐 角度(°)</label>
-            <input type="range" id="param-angle" min="-30" max="30" value="0" step="1" oninput="updateVal('angle')" class="disabled-input">
-            <span id="val-angle" class="val-box disabled-input">-</span>
         </div>
 
         <div class="control-item">
@@ -94,24 +86,6 @@
         </div>
 
         <div class="control-item">
-            <input type="checkbox" id="chk-humidity" onchange="toggleParam('humidity')">
-            <label for="chk-humidity">💧 湿度(%)</label>
-            <input type="range" id="param-humidity" min="10" max="100" value="50" step="1" oninput="updateVal('humidity')" class="disabled-input">
-            <span id="val-humidity" class="val-box disabled-input">-</span>
-        </div>
-
-        <div class="control-item">
-            <input type="checkbox" id="chk-weather" onchange="toggleParam('weather')">
-            <label for="chk-weather">☀️ 天気</label>
-            <select id="param-weather" onchange="updateVal('weather')" class="param-select disabled-input">
-                <option value="晴れ">晴れ</option>
-                <option value="曇り">曇り</option>
-                <option value="雨">雨</option>
-                <option value="雪">雪</option>
-            </select>
-        </div>
-
-        <div class="control-item">
             <input type="checkbox" id="chk-weight" onchange="toggleParam('weight')">
             <label for="chk-weight">⚖ 重さ(g)</label>
             <input type="range" id="param-weight" min="1.0" max="10.0" value="5.0" step="0.1" oninput="updateVal('weight')" class="disabled-input">
@@ -123,23 +97,6 @@
             <label for="chk-fric">🧊 摩擦係数</label>
             <input type="range" id="param-fric" min="0.001" max="0.076" value="0.026" step="0.001" oninput="updateVal('fric')" class="disabled-input">
             <span id="val-fric" class="val-box disabled-input">-</span>
-        </div>
-
-        <div class="control-item">
-            <input type="checkbox" id="chk-heartRate" onchange="toggleParam('heartRate')">
-            <label for="chk-heartRate">💓 心拍数(bpm)</label>
-            <input type="range" id="param-heartRate" min="60" max="120" value="75" step="1" oninput="updateVal('heartRate')" class="disabled-input">
-            <span id="val-heartRate" class="val-box disabled-input">-</span>
-        </div>
-
-        <div class="control-item">
-            <input type="checkbox" id="chk-coinCondition" onchange="toggleParam('coinCondition')">
-            <label for="chk-coinCondition">🪙 コインの状態</label>
-            <select id="param-coinCondition" onchange="updateVal('coinCondition')" class="param-select disabled-input">
-                <option value="ピカピカ（新硬貨）">ピカピカ（新硬貨）</option>
-                <option value="やや汚れ">やや汚れ</option>
-                <option value="黒ずみ（古硬貨）">黒ずみ（古硬貨）</option>
-            </select>
         </div>
     </div>
 
@@ -163,13 +120,11 @@
                     <thead>
                         <tr>
                             <th>試行回数</th>
-                            <th>コインの状態</th>
                             <th>引き量(mm)</th>
                             <th>角度(°)</th>
                             <th>騒音レベル(dB)</th>
                             <th>室温(℃)</th>
                             <th>湿度(%)</th>
-                            <th>天気</th>
                             <th>重さ(g)</th>
                             <th>摩擦係数</th>
                             <th>心拍数(bpm)</th>
@@ -198,7 +153,7 @@
         let stoneHits = [];
         
         // メンタル・状態管理用変数
-        let currentHeartRate = 60;
+        let currentHeartRate = 75;
         let currentStreak = 0;
         let lastResult = '成功'; // 初期値
 
@@ -222,39 +177,34 @@
             const el = document.getElementById(`param-${param}`);
             const valBox = document.getElementById(`val-${param}`);
 
-            if (!chk || !chk.checked) {
-                if (valBox) valBox.innerText = "-";
+            if (!chk.checked) {
+                valBox.innerText = "-";
                 return;
             }
 
             let unit = "";
             if(param === 'force') unit = "mm";
-            if(param === 'angle') unit = "°";
             if(param === 'guide') unit = "cm";
             if(param === 'temp') unit = "℃";
-            if(param === 'humidity') unit = "%";
             if(param === 'weight') unit = "g";
-            if(param === 'heartRate') unit = "bpm";
             
-            if (valBox) valBox.innerText = el.value + unit;
+            valBox.innerText = el.value + unit;
             drawRink();
         }
 
         function toggleParam(param) {
             const chk = document.getElementById(`chk-${param}`);
-            const input = document.getElementById(`param-${param}`);
+            const slider = document.getElementById(`param-${param}`);
             const valBox = document.getElementById(`val-${param}`);
             
             if (chk.checked) {
-                input.classList.remove('disabled-input');
-                if (valBox) valBox.classList.remove('disabled-input');
+                slider.classList.remove('disabled-input');
+                valBox.classList.remove('disabled-input');
                 updateVal(param);
             } else {
-                input.classList.add('disabled-input');
-                if (valBox) {
-                    valBox.classList.add('disabled-input');
-                    valBox.innerText = "-";
-                }
+                slider.classList.add('disabled-input');
+                valBox.classList.add('disabled-input');
+                valBox.innerText = "-";
             }
             drawRink();
         }
@@ -285,18 +235,10 @@
             }
 
             dragX = Math.min(launcher.restX, Math.max(minX, mousePos.x));
-
-            if (document.getElementById('chk-angle').checked) {
-                const angleDeg = parseFloat(document.getElementById('param-angle').value);
-                const angleRad = (angleDeg * Math.PI) / 180;
-                const dx = launcher.restX - dragX;
-                dragY = launcher.restY - (dx * Math.tan(angleRad));
-            } else {
-                const isGuide = document.getElementById('chk-guide').checked;
-                const guideVal = isGuide ? parseFloat(document.getElementById('param-guide').value) : 35;
-                const maxYSpread = (guideVal - 1) / 49 * 60; 
-                dragY = Math.min(launcher.restY + maxYSpread, Math.max(launcher.restY - maxYSpread, mousePos.y));
-            }
+            const isGuide = document.getElementById('chk-guide').checked;
+            const guideVal = isGuide ? parseFloat(document.getElementById('param-guide').value) : 35;
+            const maxYSpread = (guideVal - 1) / 49 * 60; 
+            dragY = Math.min(launcher.restY + maxYSpread, Math.max(launcher.restY - maxYSpread, mousePos.y));
 
             drawRink();
         });
@@ -408,25 +350,15 @@
         function shootStone(overrideDx = null, overrideDy = null, isFast = false) {
             isAnimating = true;
 
-            const currentCondition = document.getElementById('chk-coinCondition').checked
-                ? document.getElementById('param-coinCondition').value
-                : coinConditionList[Math.floor(Math.random() * coinConditionList.length)];
-
+            const currentCondition = coinConditionList[Math.floor(Math.random() * coinConditionList.length)];
             const noise = Math.floor(Math.random() * 41) + 40;
-
-            const currentWeather = document.getElementById('chk-weather').checked
-                ? document.getElementById('param-weather').value
-                : weatherList[Math.floor(Math.random() * weatherList.length)];
+            const currentWeather = weatherList[Math.floor(Math.random() * weatherList.length)];
 
             let humidity = 50;
-            if (document.getElementById('chk-humidity').checked) {
-                humidity = parseInt(document.getElementById('param-humidity').value);
-            } else {
-                if (currentWeather === '雨') humidity = Math.floor(Math.random() * 16) + 75;
-                else if (currentWeather === '雪') humidity = Math.floor(Math.random() * 21) + 60;
-                else if (currentWeather === '晴れ') humidity = Math.floor(Math.random() * 21) + 30;
-                else humidity = Math.floor(Math.random() * 21) + 45;
-            }
+            if (currentWeather === '雨') humidity = Math.floor(Math.random() * 16) + 75;
+            else if (currentWeather === '雪') humidity = Math.floor(Math.random() * 21) + 60;
+            else if (currentWeather === '晴れ') humidity = Math.floor(Math.random() * 21) + 30;
+            else humidity = Math.floor(Math.random() * 21) + 45;
 
             let weight = 5.0;
             if (document.getElementById('chk-weight').checked) {
@@ -460,19 +392,13 @@
             const actualPower = calcPowerFromDx(dx);
 
             // 心拍数の計算ロジック
-            let heartRateVal;
-            if (document.getElementById('chk-heartRate').checked) {
-                heartRateVal = parseInt(document.getElementById('param-heartRate').value);
-                currentHeartRate = heartRateVal;
-            } else {
-                const targetHR = 60;
-                let hrDiff = targetHR - currentHeartRate;
-                let change = hrDiff * 0.1 + (lastResult === '失敗' ? (Math.random() * 2 + 1) : -(Math.random() * 2 + 1));
-                currentHeartRate += change;
-                currentHeartRate = Math.min(80, Math.max(60, currentHeartRate));
-                heartRateVal = Math.round(currentHeartRate + (Math.random() * 4 - 2));
-                heartRateVal = Math.min(85, Math.max(60, heartRateVal));
-            }
+            const targetHR = 75;
+            let hrDiff = targetHR - currentHeartRate;
+            let change = hrDiff * 0.2 + (lastResult === '失敗' ? (Math.random() * 6 + 2) : -(Math.random() * 6 + 2));
+            currentHeartRate += change;
+            currentHeartRate = Math.min(110, Math.max(65, currentHeartRate));
+            let heartRateVal = Math.round(currentHeartRate + (Math.random() * 8 - 4));
+            heartRateVal = Math.min(115, Math.max(62, heartRateVal));
 
             let hrEffect = (heartRateVal - 75) * 0.02 * (Math.random() - 0.5);
             dy += hrEffect;
@@ -588,18 +514,16 @@
                         };
                         historyData.push(record);
 
-                        // テーブル更新
+                        // テーブル更新（コインの状態・天気を表示から除外）
                         const tbody = document.getElementById('data-table');
                         const tr = document.createElement('tr');
                         tr.innerHTML = `
                             <td>${record.trial}</td>
-                            <td>${record.coinCondition}</td>
                             <td>${record.force}</td>
                             <td>${record.angle}</td>
                             <td>${record.noise}</td>
                             <td>${record.temp}</td>
                             <td>${record.humidity}%</td>
-                            <td>${record.weather}</td>
                             <td>${record.weight}</td>
                             <td>${record.friction}</td>
                             <td>${record.heartRate}</td>
@@ -634,26 +558,25 @@
                 let dx;
                 // 1. 引き量(dx)の決定
                 if (document.getElementById('chk-force').checked) {
+                    // チェックON：設定スライダーの値に固定
                     const limitVal = parseFloat(document.getElementById('param-force').value);
                     dx = limitVal / 1.6;
                 } else {
+                    // チェックOFF：手動の可動域全体（引き量 40mm〜160mm 相当 ＝ 25px〜100px）からランダム
                     const minDx = 40 / 1.6; // 25
                     const maxDx = 160 / 1.6; // 100
                     dx = minDx + Math.random() * (maxDx - minDx);
                 }
         
                 // 2. Y軸方向のブレ・角度(dy)の決定
-                let randomDy;
-                if (document.getElementById('chk-angle').checked) {
-                    const angleDeg = parseFloat(document.getElementById('param-angle').value);
-                    const angleRad = (angleDeg * Math.PI) / 180;
-                    randomDy = -dx * Math.tan(angleRad);
-                } else {
-                    const isGuide = document.getElementById('chk-guide').checked;
-                    const guideVal = isGuide ? parseFloat(document.getElementById('param-guide').value) : 35;
-                    const maxYSpread = (guideVal / 50) * 12;
-                    randomDy = (Math.random() * 2 - 1) * maxYSpread;
-                }
+                // チェックONなら入力値、OFFなら固定値35を使用
+                const isGuide = document.getElementById('chk-guide').checked;
+                const guideVal = isGuide ? parseFloat(document.getElementById('param-guide').value) : 35;
+        
+                // maxYSpreadの計算式：(guideVal / 50) * 12
+                // ※チェックOFF（guideVal=35）のときは maxYSpread = (35 / 50) * 12 ＝ 8.4
+                const maxYSpread = (guideVal / 50) * 12;
+                const randomDy = (Math.random() * 2 - 1) * maxYSpread;
         
                 await shootStone(dx, randomDy, true);
             }
@@ -684,20 +607,18 @@
             drawRink();
         }
 
-        // Excel (.xlsx) ファイル出力関数
+        // Excel (.xlsx) ファイル出力関数（コインの状態・天気を除外）
         function downloadExcel() {
             if (historyData.length === 0) return alert('データがありません。');
 
             // Excel用データオブジェクトの整形（ヘッダー指定）
             const formattedData = historyData.map(r => ({
                 '試行回数': r.trial,
-                'コインの状態': r.coinCondition,
                 '引き量(mm)': r.force,
                 '角度(°)': r.angle,
                 '騒音レベル(dB)': r.noise,
                 '室温(℃)': r.temp,
                 '湿度(%)': r.humidity,
-                '天気': r.weather,
                 'コイン重さ(g)': r.weight,
                 '摩擦係数': r.friction,
                 '心拍数(bpm)': r.heartRate,
@@ -720,7 +641,7 @@
         }
 
         // 初期化
-        ['force', 'angle', 'guide', 'temp', 'humidity', 'weather', 'weight', 'fric', 'heartRate', 'coinCondition'].forEach(p => toggleParam(p));
+        ['force', 'guide', 'temp', 'weight', 'fric'].forEach(p => toggleParam(p));
         drawRink();
     </script>
 </body>
