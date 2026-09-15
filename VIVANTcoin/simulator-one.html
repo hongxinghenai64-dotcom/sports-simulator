@@ -319,14 +319,14 @@
             let weight = parseFloat((Math.random() * 9.0 + 1.0).toFixed(1));
             const temp = Math.floor(Math.random() * 11) + 10;
 
-            // 基本摩擦が 0.029 ～ 0.031 に収まるように調整
+            // 基本摩擦が 0.0300 ～ 0.0303 に収まるように調整
             let conditionFrictionAdd = 0;
-            if (currentCondition === 'やや汚れ') conditionFrictionAdd = 0.0005;
-            if (currentCondition === '黒ずみ（古硬貨）') conditionFrictionAdd = 0.0010;
+            if (currentCondition === 'やや汚れ') conditionFrictionAdd = 0.00008;
+            if (currentCondition === '黒ずみ（古硬貨）') conditionFrictionAdd = 0.00015;
 
-            // 基本摩擦係数の計算 (目標: 0.029 ～ 0.031)
-            let baseFriction = 0.0292 - (temp * 0.00001) + (weight * 0.00008) + conditionFrictionAdd;
-            baseFriction = Math.max(0.029, Math.min(0.031, baseFriction));
+            // 基本摩擦係数の計算 (目標: 0.0300 ～ 0.0303)
+            let baseFriction = 0.03002 - (temp * 0.000002) + (weight * 0.000015) + conditionFrictionAdd;
+            baseFriction = Math.max(0.0300, Math.min(0.0303, baseFriction));
 
             // カオス（毎フレームの微小揺らぎ）±0.005
             const frictionNoise = (Math.random() * 0.010) - 0.005;
@@ -436,7 +436,7 @@
                             temp: temp,
                             humidity: humidity,
                             weight: weight,
-                            friction: parseFloat(baseFriction.toFixed(4)),
+                            friction: parseFloat(baseFriction.toFixed(5)),
                             heartRate: heartRateVal,
                             streak: currentStreak,
                             moveTime: parseFloat(moveTimeSeconds),
