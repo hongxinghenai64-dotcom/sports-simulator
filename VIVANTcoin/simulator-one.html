@@ -328,8 +328,8 @@
             let baseFriction = 0.03002 - (temp * 0.000002) + (weight * 0.000015) + conditionFrictionAdd;
             baseFriction = Math.max(0.0300, Math.min(0.0303, baseFriction));
 
-            // カオス（毎フレームの微小揺らぎ）±0.005
-            const frictionNoise = (Math.random() * 0.010) - 0.005;
+            // カオス（毎フレームの微小揺らぎ）±0.001 に変更
+            const frictionNoise = (Math.random() * 0.002) - 0.001;
             let actualFriction = Math.max(0.001, baseFriction + frictionNoise);
 
             const dx = overrideDx !== null ? overrideDx : (launcher.restX - dragX);
