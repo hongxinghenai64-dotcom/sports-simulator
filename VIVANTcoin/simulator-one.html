@@ -228,14 +228,19 @@
                 if (mm % 200 === 0 || mm === 100) ctx.fillText(mm, x - 12, 15);
             }
 
-            // ハウス（目標1700mm）
-            const houseX = getXFromDistance(1700);
-            const houseY = canvas.height / 2;
-            const outerRadius = (RINK_END_X - launcher.restX) / (MAX_DISTANCE_MM / 100);
+            // 帯状の目標エリア（1,600mm 〜 1,800mm）
+            const targetStartX = getXFromDistance(1600);
+            const targetEndX = getXFromDistance(1800);
+            const targetWidth = targetEndX - targetStartX;
 
-            ctx.beginPath(); ctx.arc(houseX, houseY, outerRadius, 0, Math.PI * 2); ctx.fillStyle = '#ef4444'; ctx.fill();
-            ctx.beginPath(); ctx.arc(houseX, houseY, outerRadius * 0.66, 0, Math.PI * 2); ctx.fillStyle = '#ffffff'; ctx.fill();
-            ctx.beginPath(); ctx.arc(houseX, houseY, outerRadius * 0.33, 0, Math.PI * 2); ctx.fillStyle = '#2563eb'; ctx.fill();
+            ctx.fillStyle = 'rgba(239, 68, 68, 0.4)'; // 赤色の半透明
+            ctx.fillRect(targetStartX, 0, targetWidth, canvas.height);
+
+            // 帯の境界線
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(targetStartX, 0); ctx.lineTo(targetStartX, canvas.height); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(targetEndX, 0); ctx.lineTo(targetEndX, canvas.height); ctx.stroke();
 
             // 分度器（角度目盛）
             ctx.save();
@@ -291,7 +296,8 @@
             stoneHits.forEach(stone => {
                 if (stone.x <= canvas.width && stone.y >= 0 && stone.y <= canvas.height) {
                     ctx.beginPath(); ctx.arc(stone.x, stone.y, 8, 0, Math.PI * 2);
-                    ctx.fillStyle = Math.hypot(stone.x - houseX, stone.y - houseY) <= outerRadius ? '#ef4444' : '#1e293b';
+                    const isHitBand = (stone.x >= targetStartX && stone.x <= targetEndX);
+                    ctx.fillStyle = isHitBand ? '#ef4444' : '#1e293b';
                     ctx.fill(); ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 1.5; ctx.stroke();
                 }
             });
@@ -320,8 +326,8 @@
             let baseFriction = 0.032 - (temp * 0.0001) + (weight * 0.0008) + conditionFrictionAdd;
             baseFriction = Math.max(0.001, baseFriction);
 
-            // カオス（±0.005のランダムな揺らぎ）
-            const frictionNoise = (Math.random() * 0.010) - 0.005;
+            // カオス（従来の1/4である ±0.00125 のランダムな揺らぎ）
+            const frictionNoise = (Math.random() * 0.0025) - 0.00125;
             let actualFriction = Math.max(0.001, baseFriction + frictionNoise);
 
             const dx = overrideDx !== null ? overrideDx : (launcher.restX - dragX);
@@ -402,11 +408,11 @@
 
                         let moveTimeSeconds = (frameCount * 0.045).toFixed(2);
 
-                        const houseX = getXFromDistance(1700);
-                        const houseY = canvas.height / 2;
-                        const pxPer100mm = (RINK_END_X - launcher.restX) / (MAX_DISTANCE_MM / 100);
+                        const targetStartX = getXFromDistance(1600);
+                        const targetEndX = getXFromDistance(1800);
                         
-                        const isSuccess = (Math.hypot(posX - houseX, posY - houseY) <= pxPer100mm) ? '成功' : '失敗';
+                        // 1,600mm 〜 1,800mm の帯に入っているかで成功判定
+                        const isSuccess = (posX >= targetStartX && posX <= targetEndX && !isOutOfBounds) ? '成功' : '失敗';
                         
                         if (isSuccess === '成功') {
                             currentStreak++;
@@ -419,7 +425,7 @@
                             stoneHits.push({ x: posX, y: posY });
                         }
 
-                        // 内部のデータ記録処理は維持
+                        // 内部データ記録
                         historyData.push({
                             trial: trialCount,
                             force: actualPower,
