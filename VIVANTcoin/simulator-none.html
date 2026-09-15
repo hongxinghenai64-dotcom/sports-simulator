@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>コイン投擲シミュレーター</title>
-    <!-- SheetJS (Excel出力用ライブラリ) の読み込み -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         * { box-sizing: border-box; }
         body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f0f4f8; margin: 0; padding: 20px; color: #333; }
@@ -28,33 +26,17 @@
         .bottom-area { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
         .btn-group { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
         button { padding: 10px 16px; font-size: 13px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; transition: 0.2s; }
-        .btn-excel { background-color: #16a34a; color: white; }
-        .btn-excel:hover { background-color: #15803d; }
         .btn-auto { background-color: #10b981; color: white; }
         .btn-auto:hover { background-color: #059669; }
         .btn-reset { background-color: #ef4444; color: white; }
         .btn-reset:hover { background-color: #dc2626; }
         
         .auto-box { display: flex; align-items: center; gap: 8px; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 6px 12px; border-radius: 6px; }
-        
-        .table-container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 100%; max-width: 1200px; max-height: 280px; overflow-y: auto; overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; font-size: 11px; text-align: center; white-space: nowrap; }
-        th, td { padding: 6px 8px; border: 1px solid #cbd5e1; }
-        th { background-color: #f1f5f9; font-weight: bold; position: sticky; top: 0; z-index: 10; }
-        
-        .desc-box { background: #eff6ff; border-left: 4px solid #2563eb; padding: 10px 15px; border-radius: 4px; font-size: 13px; margin-bottom: 15px; }
     </style>
 </head>
 <body>
 
     <h1>🥌 コイン射撃シミュレーター（学芸大学付属国際中等）</h1>
-    
-    <div class="desc-box">
-        <strong>【使い方】</strong><br>
-        手動でドラッグして発射するか、下の「自動実行」でデータを集めることができます。<br>
-        「はじめから」を押すとデータがリセットされます。押すときは注意してください。<br>
-        データを集めたら「Excel出力」をして分析しよう。詳しくはワークシートを参照。
-    </div>
 
     <div class="simulation-container">
         <canvas id="canvas" width="1200" height="260"></canvas>
@@ -67,35 +49,7 @@
                     <span id="val-auto-count" style="font-weight:bold; font-size:12px; width:45px;">50回</span>
                     <button class="btn-auto" id="btn-run-auto" onclick="runAutoSimulation()">自動実行</button>
                 </div>
-                <button class="btn-excel" onclick="downloadExcel()">Excel出力</button>
                 <button class="btn-reset" onclick="resetData()">はじめから</button>
-            </div>
-
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>試行回数</th>
-                            <th>引き量(mm)</th>
-                            <th>角度(°)</th>
-                            <th>騒音レベル(dB)</th>
-                            <th>室温(℃)</th>
-                            <th>湿度(%)</th>
-                            <th>重さ(g)</th>
-                            <th>摩擦係数</th>
-                            <th>心拍数(bpm)</th>
-                            <th>連続成功</th>
-                            <th>移動時間(秒)</th>
-                            <th>到達[横](mm)</th>
-                            <th>直線距離(mm)</th>
-                            <th>横ズレ(mm)</th>
-                            <th>中心からの距離(mm)</th>
-                            <th>成功判定</th>
-                        </tr>
-                    </thead>
-                    <tbody id="data-table">
-                    </tbody>
-                </table>
             </div>
         </div>
     </div>
@@ -397,29 +351,6 @@
                         };
                         historyData.push(record);
 
-                        // テーブル更新
-                        const tbody = document.getElementById('data-table');
-                        const tr = document.createElement('tr');
-                        tr.innerHTML = `
-                            <td>${record.trial}</td>
-                            <td>${record.force}</td>
-                            <td>${record.angle}</td>
-                            <td>${record.noise}</td>
-                            <td>${record.temp}</td>
-                            <td>${record.humidity}%</td>
-                            <td>${record.weight}</td>
-                            <td>${record.friction}</td>
-                            <td>${record.heartRate}</td>
-                            <td>${record.streak}</td>
-                            <td>${record.moveTime}</td>
-                            <td><strong style="${displayX === '測定不能' ? 'color:#ef4444;' : ''}">${record.distanceX}</strong></td>
-                            <td><strong style="${displayDiag === '測定不能' ? 'color:#ef4444;' : ''}">${record.distanceDiag}</strong></td>
-                            <td><strong style="${displayDev === '測定不能' ? 'color:#ef4444;' : ''}">${record.sideDev}</strong></td>
-                            <td><strong style="${distFromCenter === '測定不能' ? 'color:#ef4444;' : ''}">${record.distFromCenter}</strong></td>
-                            <td>${record.houseIn}</td>
-                        `;
-                        tbody.insertBefore(tr, tbody.firstChild);
-
                         dragX = launcher.restX; dragY = launcher.restY;
                         isAnimating = false;
                         drawRink();
@@ -471,38 +402,7 @@
             lastResult = '成功';
             dragX = launcher.restX; 
             dragY = launcher.restY;
-            document.getElementById('data-table').innerHTML = '';
             drawRink();
-        }
-
-        // Excel (.xlsx) ファイル出力関数
-        function downloadExcel() {
-            if (historyData.length === 0) return alert('データがありません。');
-
-            const formattedData = historyData.map(r => ({
-                '試行回数': r.trial,
-                '引き量(mm)': r.force,
-                '角度(°)': r.angle,
-                '騒音レベル(dB)': r.noise,
-                '室温(℃)': r.temp,
-                '湿度(%)': r.humidity,
-                'コイン重さ(g)': r.weight,
-                '摩擦係数': r.friction,
-                '心拍数(bpm)': r.heartRate,
-                '連続成功': r.streak,
-                '移動時間(秒)': r.moveTime,
-                '到達距離_横(mm)': r.distanceX,
-                '直線距離(mm)': r.distanceDiag,
-                '横ズレ(mm)': r.sideDev,
-                '中心からの距離(mm)': r.distFromCenter,
-                'ハウスイン判定': r.houseIn
-            }));
-
-            const worksheet = XLSX.utils.json_to_sheet(formattedData);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "シミュレーション結果");
-
-            XLSX.writeFile(workbook, "coin_shooting_eda_data.xlsx");
         }
 
         // 初期描画
