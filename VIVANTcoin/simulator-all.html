@@ -307,14 +307,16 @@
                 if (mm % 200 === 0 || mm === 100) ctx.fillText(mm, x - 12, 15);
             }
 
-            // ハウス（目標1700mm）
-            const houseX = getXFromDistance(1700);
-            const houseY = canvas.height / 2;
-            const outerRadius = (RINK_END_X - launcher.restX) / (MAX_DISTANCE_MM / 100);
+            // 目標エリア（1600mm〜1800mmの帯状ゾーン）
+            const targetStartX = getXFromDistance(1600);
+            const targetEndX = getXFromDistance(1800);
+            const zoneWidth = targetEndX - targetStartX;
 
-            ctx.beginPath(); ctx.arc(houseX, houseY, outerRadius, 0, Math.PI * 2); ctx.fillStyle = '#ef4444'; ctx.fill();
-            ctx.beginPath(); ctx.arc(houseX, houseY, outerRadius * 0.66, 0, Math.PI * 2); ctx.fillStyle = '#ffffff'; ctx.fill();
-            ctx.beginPath(); ctx.arc(houseX, houseY, outerRadius * 0.33, 0, Math.PI * 2); ctx.fillStyle = '#2563eb'; ctx.fill();
+            ctx.fillStyle = 'rgba(239, 68, 68, 0.4)';
+            ctx.fillRect(targetStartX, 0, zoneWidth, canvas.height);
+            ctx.strokeStyle = '#dc2626';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(targetStartX, 0, zoneWidth, canvas.height);
 
             // 分度器（放射状の角度目盛）の描画
             ctx.save();
@@ -376,7 +378,7 @@
             stoneHits.forEach(stone => {
                 if (stone.x <= canvas.width && stone.y >= 0 && stone.y <= canvas.height) {
                     ctx.beginPath(); ctx.arc(stone.x, stone.y, 8, 0, Math.PI * 2);
-                    ctx.fillStyle = Math.hypot(stone.x - houseX, stone.y - houseY) <= outerRadius ? '#ef4444' : '#1e293b';
+                    ctx.fillStyle = (stone.x >= targetStartX && stone.x <= targetEndX) ? '#ef4444' : '#1e293b';
                     ctx.fill(); ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 1.5; ctx.stroke();
                 }
             });
@@ -513,11 +515,11 @@
 
                         let moveTimeSeconds = (frameCount * 0.045).toFixed(2);
 
-                        const houseX = getXFromDistance(1700);
-                        const houseY = canvas.height / 2;
-                        const pxPer100mm = (RINK_END_X - launcher.restX) / (MAX_DISTANCE_MM / 100);
-                        
-                        const isSuccess = (Math.hypot(posX - houseX, posY - houseY) <= pxPer100mm) ? '成功' : '失敗';
+                        const targetStartX = getXFromDistance(1600);
+                        const targetEndX = getXFromDistance(1800);
+
+                        // 1600mm〜1800mmの帯状エリア内かどうかの判定
+                        const isSuccess = (posX >= targetStartX && posX <= targetEndX && !isOutOfBounds) ? '成功' : '失敗';
                         
                         // 連続成功記録の更新
                         if (isSuccess === '成功') {
