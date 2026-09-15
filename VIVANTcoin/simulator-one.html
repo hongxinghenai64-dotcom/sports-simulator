@@ -319,16 +319,16 @@
             let weight = parseFloat((Math.random() * 9.0 + 1.0).toFixed(1));
             const temp = Math.floor(Math.random() * 11) + 10;
 
-            // 基本摩擦係数のランダム幅を従来の1/4に抑える
+            // 基本摩擦が 0.029 ～ 0.031 に収まるように調整
             let conditionFrictionAdd = 0;
-            if (currentCondition === 'やや汚れ') conditionFrictionAdd = 0.0010; // (元 0.0040 の 1/4)
-            if (currentCondition === '黒ずみ（古硬貨）') conditionFrictionAdd = 0.00225; // (元 0.0090 の 1/4)
+            if (currentCondition === 'やや汚れ') conditionFrictionAdd = 0.0005;
+            if (currentCondition === '黒ずみ（古硬貨）') conditionFrictionAdd = 0.0010;
 
-            // 温度・重量による基本摩擦の変化幅も 1/4 に調整
-            let baseFriction = 0.032 - (temp * 0.000025) + (weight * 0.0002) + conditionFrictionAdd;
-            baseFriction = Math.max(0.001, baseFriction);
+            // 基本摩擦係数の計算 (目標: 0.029 ～ 0.031)
+            let baseFriction = 0.0292 - (temp * 0.00001) + (weight * 0.00008) + conditionFrictionAdd;
+            baseFriction = Math.max(0.029, Math.min(0.031, baseFriction));
 
-            // カオス（毎フレームの微小揺らぎ）は元の ±0.005（幅 0.010）に復元
+            // カオス（毎フレームの微小揺らぎ）±0.005
             const frictionNoise = (Math.random() * 0.010) - 0.005;
             let actualFriction = Math.max(0.001, baseFriction + frictionNoise);
 
