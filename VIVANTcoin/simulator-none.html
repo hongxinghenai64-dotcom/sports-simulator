@@ -151,16 +151,6 @@
             ctx.lineWidth = 2;
             ctx.strokeRect(targetStartX, 0, zoneWidth, canvas.height);
 
-            // 帯の中央線（1700mm）
-            const targetCenterX = getXFromDistance(1700);
-            ctx.beginPath();
-            ctx.setLineDash([5, 5]);
-            ctx.moveTo(targetCenterX, 0);
-            ctx.lineTo(targetCenterX, canvas.height);
-            ctx.strokeStyle = '#b91c1c';
-            ctx.stroke();
-            ctx.setLineDash([]); // 点線リセット
-
             // 分度器（放射状の角度目盛）の描画
             ctx.save();
             ctx.font = '10px sans-serif';
