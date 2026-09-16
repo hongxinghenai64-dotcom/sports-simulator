@@ -363,29 +363,6 @@
             });
         }
 
-        async function runAutoSimulation() {
-            if (isAnimating) return;
-            const count = parseInt(document.getElementById('auto-count').value);
-            const btn = document.getElementById('btn-run-auto');
-            btn.disabled = true;
-            btn.innerText = "実行中...";
-        
-            for (let i = 0; i < count; i++) {
-                const minDx = 40 / 1.6;
-                const maxDx = 160 / 1.6;
-                const dx = minDx + Math.random() * (maxDx - minDx);
-
-                const guideVal = 35;
-                const maxYSpread = (guideVal / 50) * 12;
-                const randomDy = (Math.random() * 2 - 1) * maxYSpread;
-        
-                await shootStone(dx, randomDy, true);
-            }
-        
-            btn.disabled = false;
-            btn.innerText = "自動実行";
-        }
-
         function resetData() {
             if (historyData.length > 0) {
                 const isConfirmed = confirm(
