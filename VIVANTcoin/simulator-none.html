@@ -26,12 +26,8 @@
         .bottom-area { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
         .btn-group { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
         button { padding: 10px 16px; font-size: 13px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; transition: 0.2s; }
-        .btn-auto { background-color: #10b981; color: white; }
-        .btn-auto:hover { background-color: #059669; }
         .btn-reset { background-color: #ef4444; color: white; }
         .btn-reset:hover { background-color: #dc2626; }
-        
-        .auto-box { display: flex; align-items: center; gap: 8px; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 6px 12px; border-radius: 6px; }
     </style>
 </head>
 <body>
@@ -43,12 +39,6 @@
         
         <div class="bottom-area">
             <div class="btn-group">
-                <div class="auto-box">
-                    <label for="auto-count" style="font-weight:bold; font-size:12px;">⚡ 自動試行回数:</label>
-                    <input type="range" id="auto-count" min="20" max="200" value="50" step="10" oninput="document.getElementById('val-auto-count').innerText = this.value + '回'">
-                    <span id="val-auto-count" style="font-weight:bold; font-size:12px; width:45px;">50回</span>
-                    <button class="btn-auto" id="btn-run-auto" onclick="runAutoSimulation()">自動実行</button>
-                </div>
                 <button class="btn-reset" onclick="resetData()">はじめから</button>
             </div>
         </div>
