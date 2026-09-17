@@ -31,12 +31,8 @@
         .bottom-area { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
         .btn-group { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
         button { padding: 10px 16px; font-size: 13px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; transition: 0.2s; }
-        .btn-auto { background-color: #10b981; color: white; }
-        .btn-auto:hover { background-color: #059669; }
         .btn-reset { background-color: #ef4444; color: white; }
         .btn-reset:hover { background-color: #dc2626; }
-        
-        .auto-box { display: flex; align-items: center; gap: 8px; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 6px 12px; border-radius: 6px; }
         
         .disabled-input { opacity: 0.3; pointer-events: none; }
     </style>
@@ -60,12 +56,6 @@
         
         <div class="bottom-area">
             <div class="btn-group">
-                <div class="auto-box">
-                    <label for="auto-count" style="font-weight:bold; font-size:12px;">⚡ 自動試行回数:</label>
-                    <input type="range" id="auto-count" min="20" max="200" value="50" step="10" oninput="document.getElementById('val-auto-count').innerText = this.value + '回'">
-                    <span id="val-auto-count" style="font-weight:bold; font-size:12px; width:45px;">50回</span>
-                    <button class="btn-auto" id="btn-run-auto" onclick="runAutoSimulation()">自動実行</button>
-                </div>
                 <button class="btn-reset" onclick="resetData()">はじめから</button>
             </div>
         </div>
@@ -303,7 +293,7 @@
             });
         }
 
-        function shootStone(overrideDx = null, overrideDy = null, isFast = false) {
+        function shootStone() {
             isAnimating = true;
 
             const currentCondition = coinConditionList[Math.floor(Math.random() * coinConditionList.length)];
@@ -332,8 +322,8 @@
             const frictionNoise = (Math.random() * 0.002) - 0.001;
             let actualFriction = Math.max(0.001, baseFriction + frictionNoise);
 
-            const dx = overrideDx !== null ? overrideDx : (launcher.restX - dragX);
-            let dy = overrideDy !== null ? overrideDy : (dragY - launcher.restY);
+            const dx = launcher.restX - dragX;
+            let dy = dragY - launcher.restY;
             const actualPower = calcPowerFromDx(dx);
 
             const targetHR = 60;
@@ -359,133 +349,90 @@
             let isOutOfBounds = false;
             let frameCount = 0;
 
-            return new Promise((resolve) => {
-                function animate() {
-                    const stepCount = isFast ? 10 : 1; 
-                    for(let i = 0; i < stepCount; i++) {
-                        frameCount++;
-                        posX += vx * 10;
-                        posY += vy * 10;
+            function animate() {
+                frameCount++;
+                posX += vx * 10;
+                posY += vy * 10;
 
-                        vx *= (1 - actualFriction);
-                        vy *= (1 - actualFriction);
+                vx *= (1 - actualFriction);
+                vy *= (1 - actualFriction);
 
-                        if (posY < 0 || posY > canvas.height) {
-                            isOutOfBounds = true;
-                            break;
-                        }
-                        if (Math.hypot(vx, vy) <= 0.01 || posX >= RINK_END_X) break;
-                    }
-
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    drawRink();
-
-                    ctx.beginPath(); ctx.arc(posX, posY, launcher.stoneRadius, 0, Math.PI * 2);
-                    ctx.fillStyle = '#800000'; ctx.fill();
-
-                    if (Math.hypot(vx, vy) > 0.01 && posX < RINK_END_X && !isOutOfBounds) {
-                        if (isFast) {
-                            setTimeout(animate, 0);
-                        } else {
-                            requestAnimationFrame(animate);
-                        }
-                    } else {
-                        trialCount++;
-                        let distX = getDistanceFromX(posX);
-                        let distDiag = getActualDistance(posX, posY);
-
-                        const pxPerMM = (RINK_END_X - launcher.restX) / MAX_DISTANCE_MM;
-                        let sideDeviation = (posY - launcher.restY) / pxPerMM;
-
-                        let displayX = distX.toFixed(3);
-                        let displayDiag = distDiag.toFixed(3);
-                        let displayDev = sideDeviation.toFixed(3);
-
-                        let distFromCenter = '測定不能';
-                        if (displayX !== '測定不能' && displayDev !== '測定不能') {
-                            const errorX = parseFloat(displayX) - 1700;
-                            const errorY = parseFloat(displayDev);
-                            distFromCenter = Math.hypot(errorX, errorY).toFixed(3);
-                        }
-
-                        let moveTimeSeconds = (frameCount * 0.045).toFixed(2);
-
-                        const targetStartX = getXFromDistance(1600);
-                        const targetEndX = getXFromDistance(1800);
-                        
-                        // 1,600mm 〜 1,800mm の帯に入っているかで成功判定
-                        const isSuccess = (posX >= targetStartX && posX <= targetEndX && !isOutOfBounds) ? '成功' : '失敗';
-                        
-                        if (isSuccess === '成功') {
-                            currentStreak++;
-                        } else {
-                            currentStreak = 0;
-                        }
-                        lastResult = isSuccess;
-
-                        if (distDiag <= MAX_DISTANCE_MM && !isOutOfBounds) {
-                            stoneHits.push({ x: posX, y: posY });
-                        }
-
-                        // 内部データ記録
-                        historyData.push({
-                            trial: trialCount,
-                            force: actualPower,
-                            angle: angleDeg,
-                            noise: noise,
-                            temp: temp,
-                            humidity: humidity,
-                            weight: weight,
-                            friction: parseFloat(baseFriction.toFixed(5)),
-                            heartRate: heartRateVal,
-                            streak: currentStreak,
-                            moveTime: parseFloat(moveTimeSeconds),
-                            distanceX: displayX,
-                            distanceDiag: displayDiag,
-                            sideDev: displayDev,
-                            distFromCenter: distFromCenter,
-                            houseIn: isSuccess
-                        });
-
-                        dragX = launcher.restX; dragY = launcher.restY;
-                        isAnimating = false;
-                        drawRink();
-                        resolve();
-                    }
+                if (posY < 0 || posY > canvas.height) {
+                    isOutOfBounds = true;
                 }
-                animate();
-            });
-        }
 
-        async function runAutoSimulation() {
-            if (isAnimating) return;
-            const count = parseInt(document.getElementById('auto-count').value);
-            const btn = document.getElementById('btn-run-auto');
-            btn.disabled = true;
-            btn.innerText = "実行中...";
-        
-            for (let i = 0; i < count; i++) {
-                let dx;
-                const chkForce = document.getElementById('chk-force');
-                if (chkForce && chkForce.checked) {
-                    const limitVal = parseFloat(document.getElementById('param-force').value);
-                    dx = limitVal / 1.6;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                drawRink();
+
+                ctx.beginPath(); ctx.arc(posX, posY, launcher.stoneRadius, 0, Math.PI * 2);
+                ctx.fillStyle = '#800000'; ctx.fill();
+
+                if (Math.hypot(vx, vy) > 0.01 && posX < RINK_END_X && !isOutOfBounds) {
+                    requestAnimationFrame(animate);
                 } else {
-                    const minDx = 40 / 1.6;
-                    const maxDx = 160 / 1.6;
-                    dx = minDx + Math.random() * (maxDx - minDx);
+                    trialCount++;
+                    let distX = getDistanceFromX(posX);
+                    let distDiag = getActualDistance(posX, posY);
+
+                    const pxPerMM = (RINK_END_X - launcher.restX) / MAX_DISTANCE_MM;
+                    let sideDeviation = (posY - launcher.restY) / pxPerMM;
+
+                    let displayX = distX.toFixed(3);
+                    let displayDiag = distDiag.toFixed(3);
+                    let displayDev = sideDeviation.toFixed(3);
+
+                    let distFromCenter = '測定不能';
+                    if (displayX !== '測定不能' && displayDev !== '測定不能') {
+                        const errorX = parseFloat(displayX) - 1700;
+                        const errorY = parseFloat(displayDev);
+                        distFromCenter = Math.hypot(errorX, errorY).toFixed(3);
+                    }
+
+                    let moveTimeSeconds = (frameCount * 0.045).toFixed(2);
+
+                    const targetStartX = getXFromDistance(1600);
+                    const targetEndX = getXFromDistance(1800);
+                    
+                    // 1,600mm 〜 1,800mm の帯に入っているかで成功判定
+                    const isSuccess = (posX >= targetStartX && posX <= targetEndX && !isOutOfBounds) ? '成功' : '失敗';
+                    
+                    if (isSuccess === '成功') {
+                        currentStreak++;
+                    } else {
+                        currentStreak = 0;
+                    }
+                    lastResult = isSuccess;
+
+                    if (distDiag <= MAX_DISTANCE_MM && !isOutOfBounds) {
+                        stoneHits.push({ x: posX, y: posY });
+                    }
+
+                    // 内部データ記録
+                    historyData.push({
+                        trial: trialCount,
+                        force: actualPower,
+                        angle: angleDeg,
+                        noise: noise,
+                        temp: temp,
+                        humidity: humidity,
+                        weight: weight,
+                        friction: parseFloat(baseFriction.toFixed(5)),
+                        heartRate: heartRateVal,
+                        streak: currentStreak,
+                        moveTime: parseFloat(moveTimeSeconds),
+                        distanceX: displayX,
+                        distanceDiag: displayDiag,
+                        sideDev: displayDev,
+                        distFromCenter: distFromCenter,
+                        houseIn: isSuccess
+                    });
+
+                    dragX = launcher.restX; dragY = launcher.restY;
+                    isAnimating = false;
+                    drawRink();
                 }
-        
-                let randomDy;
-                const guideVal = 35;
-                const maxYSpread = (guideVal / 50) * 12;
-                randomDy = (Math.random() * 2 - 1) * maxYSpread;
-        
-                await shootStone(dx, randomDy, true);
             }
-        
-            btn.disabled = false;
-            btn.innerText = "自動実行";
+            animate();
         }
 
         function resetData() {
